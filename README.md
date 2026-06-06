@@ -1,5 +1,5 @@
 # Red Light Development
-<img width="200" height="200" alt="icon" src="[https://github.com/user-attachments/assets/ed136a2a-042b-40b5-a1b0-cbb11470714a" />](https://github.com/user-attachments/assets/041e7550-b9c7-48dd-b60a-af9ebfd23a1f" />)<br/><br/>
+<img width="200" height="200" alt="icon" src=""(https://github.com/user-attachments/assets/041e7550-b9c7-48dd-b60a-af9ebfd23a1f" /><br/><br/>
 This is a development and testing repository for Red Light. Projects are not intended for wider use or public distribution.<br/><br/>
 To install Red Wizard plugins, go to...<br/><br/>
 https://repo.redwizard.xyz/
