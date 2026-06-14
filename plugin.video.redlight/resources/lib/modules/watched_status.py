@@ -40,6 +40,9 @@ def get_hidden_progress_items(watched_indicators):
 			watched_db = get_database()
 			watched_info = watched_db.execute('SELECT status FROM watched_status WHERE db_type = ?', ('hidden_progress_items',)).fetchone()[0]
 			return eval(watched_info) or []
+		elif watched_indicators == 2:
+			from apis.simkl_api import simkl_get_dropped_items
+			return simkl_get_dropped_items()
 		else: return trakt_get_hidden_items('dropped')
 	except: return []
 
@@ -49,6 +52,8 @@ def update_hidden_progress(media_id):
 	new_hidden = [i for i in current_hidden if i != int(media_id)]
 	if new_hidden == current_hidden: return
 	if watched_indicators == 0: function = hide_unhide_progress_items
+	elif watched_indicators == 2:
+		from apis.simkl_api import simkl_hide_unhide_progress_items as function
 	else: from apis.trakt_api import hide_unhide_progress_items as function
 	function({'action': 'undrop', 'media_type': 'shows', 'media_id': media_id, 'section': 'dropped', 'refresh': 'false'})
 
