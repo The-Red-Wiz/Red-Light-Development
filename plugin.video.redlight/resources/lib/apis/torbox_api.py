@@ -352,7 +352,7 @@ class TorBoxAPI:
 				label = title or item.get('name') or item.get('filename') or 'Torrent'
 				label = clean_file_name(normalize(label))[:80]
 				self.clear_cache()
-				notification('TorBox: Ready in Cloud Storage — %s' % label, 6000)
+				notification('TorBox: Ready in Cloud — %s' % label, 6000)
 				return
 			status = str(item.get('status', '')).lower()
 			if status in ('error', 'failed') or 'stalled' in status:
@@ -692,7 +692,7 @@ class TorBoxAPI:
 		return None, []
 
 	def parse_magnet_pack(self, magnet_url, info_hash):
-		'''POV-aligned pack listing: create_transfer then read files from mylist (no early delete).'''
+		'''List pack files via create_transfer; caller removes transfer when Store Resolved to Cloud is off.'''
 		torrent_id = None
 		try:
 			extensions = supported_video_extensions()
@@ -740,20 +740,20 @@ class TorBoxAPI:
 		try:
 			response = requests.get(base_url + 'user/auth/device/start', params={'app': app_name}, timeout=20).json()
 		except Exception:
-			return ok_dialog(text='Unable to start TorBox authorization')
+			return ok_dialog(text='Unable to start TorBox authorisation')
 		if not response.get('success'):
-			return ok_dialog(text=response.get('detail') or 'Unable to start TorBox authorization')
+			return ok_dialog(text=response.get('detail') or 'Unable to start TorBox authorisation')
 		data = response.get('data') or {}
 		device_code = data.get('device_code')
 		user_code = data.get('code')
 		if not device_code or not user_code:
-			return ok_dialog(text='Invalid TorBox authorization response')
+			return ok_dialog(text='Invalid TorBox authorisation response')
 		auth_url = _device_auth_url(app_name, user_code)
 		qr_code = make_qrcode(auth_url) or ''
 		copy2clip(auth_url)
 		p_dialog_insert = '[CR]Full link copied to clipboard[CR]OR visit: [B]torbox.app/oauth/device[/B][CR]AND Enter this Code: [B]%s[/B]' % user_code
 		content = 'Please Scan the QR Code%s[CR]' % p_dialog_insert
-		progressDialog = progress_dialog('TorBox Authorize', qr_code)
+		progressDialog = progress_dialog('TorBox Authorise', qr_code)
 		progressDialog.update(content, 0)
 		sleep_interval = int(data.get('interval') or 5)
 		try:
@@ -802,7 +802,7 @@ class TorBoxAPI:
 		if not confirm_dialog(): return
 		set_setting('tb.token', 'empty_setting')
 		set_setting('tb.enabled', 'false')
-		notification('TorBox Authorization Reset', 3000)
+		notification('TorBox Authorisation Reset', 3000)
 
 	def clear_cache(self, clear_hashes=True):
 		try:

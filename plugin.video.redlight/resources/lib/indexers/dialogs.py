@@ -113,19 +113,17 @@ def rescrape_actions_choice(params):
 	action_values = {0: 'Off', 1: 'Auto', 2: 'Prompt'}
 	order_values = {0: 'Highest', 1: 'High', 2: 'Middle', 3: 'Low', 4: 'Lower', 5: 'Lowest'}
 	rescrape_settings = settings.rescrape_all_settings()
-	def _rescrape_line2(item, action, order):
-		return 'Action: [B]%s[/B]  |  Order: [B]%s[/B]' % (action_values[action], order_values[order])
-	choices = [dict(i, **{'line1': '%02d, %s' % (int(k[2]) + 1, i['name']),
-				'line2': _rescrape_line2(i, k[1], k[2]), 'value': i['value'],
+	choices = [dict(i, **{'line1': i['name'],
+				'line2': 'Action: [B]%s[/B] | Order: [B]%s[/B]' % (action_values[k[1]], order_values[k[2]]), 'value': i['value'],
 				'action': k[1], 'order': k[2]}) for i in kodi_utils.rescrape_items() for k in rescrape_settings if k[0] == i['value']]
 	choices = [dict(i, **{'position': c}) for c, i in enumerate(sorted(choices, key=lambda k: k['order']))]
-	kwargs = {'items': json.dumps(choices), 'heading': 'Choose Properties for Rescrape', 'multi_line': 'true', 'narrow_window': 'true', 'set_focus': set_focus}
+	kwargs = {'items': json.dumps(choices), 'heading': 'Rescrape Actions', 'multi_line': 'true', 'narrow_window': 'true', 'set_focus': set_focus}
 	choice = kodi_utils.select_dialog(choices, **kwargs)
 	if choice == None: return
 	choice_value, choice_action, choice_order = choice['value'], choice['action'], choice['order']
 	params['set_focus'] = choice['position']
 	choices = [{'line1': 'Set Action', 'action': 'set_action'}, {'line1': 'Set Order', 'action': 'set_order'}]
-	kwargs = {'items': json.dumps(choices), 'heading': 'Choose Properties for Rescrape', 'narrow_window': 'true', 'set_focus': set_focus}
+	kwargs = {'items': json.dumps(choices), 'heading': 'Rescrape Actions', 'narrow_window': 'true', 'set_focus': set_focus}
 	choice = kodi_utils.select_dialog(choices, **kwargs)
 	if choice == None: return rescrape_actions_choice(params)
 	action = choice['action']
@@ -595,63 +593,41 @@ def _trakt_manager_mark(params, action):
 
 def trakt_manager_choice(params):
 	if not settings.trakt_user_active(): return kodi_utils.notification('No Active Trakt Account', 3500)
-	from apis import trakt_api
+	tmdb_id, tvdb_id, imdb_id, media_type = params['tmdb_id'], params['tvdb_id'], params['imdb_id'], params['media_type']
 	icon = params.get('icon', None) or kodi_utils.get_icon('trakt')
-	sep = ('[COLOR gray]————————————[/COLOR]', '__separator__')
-	choices = [
-		('Mark as [B]Watched[/B]', 'mark_watched'),
-		('Mark as [B]Unwatched[/B]', 'mark_unwatched'),
-		('Reset [B]Scrobble[/B]', 'reset_scrobble'),
-		('Rate', 'rate'),
-		('Unrate', 'unrate'),
-		sep,
-		('Add to [B]Watchlist[/B]', 'add_watchlist'),
-		('Remove from [B]Watchlist[/B]', 'remove_watchlist'),
-		('Add to [B]Collection[/B]', 'add_collection'),
-		('Remove from [B]Collection[/B]', 'remove_collection'),
-		('Add to [B]Personal List[/B]...', 'add'),
-		('Remove from [B]Personal List[/B]...', 'remove'),
-		('Add to [B]New List[/B]...', 'add_new_list'),
-	]
+	choices = [('Add to [B]Watchlist[/B]', 'add_watchlist'), ('Remove from [B]Watchlist[/B]', 'remove_watchlist'),
+				('Add to [B]Collection[/B]', 'add_collection'), ('Remove from [B]Collection[/B]', 'remove_collection'),
+				('Add To [B]Personal List[/B]...', 'add'), ('Remove from [B]Personal List[/B]...', 'remove')]
 	list_items = [{'line1': item[0], 'icon': icon} for item in choices]
-	kwargs = {'items': json.dumps(list_items), 'heading': 'Trakt Manager', 'narrow_window': 'true'}
+	kwargs = {'items': json.dumps(list_items), 'heading': 'Trakt Lists Manager'}
 	choice = kodi_utils.select_dialog([i[1] for i in choices], **kwargs)
 	if choice == None: return
-	if choice == '__separator__': return trakt_manager_choice(params)
-	_, _, _, data = trakt_api.trakt_manager_list_data(params)
-	if choice == 'mark_watched': return _trakt_manager_mark(params, 'mark_as_watched')
-	if choice == 'mark_unwatched': return _trakt_manager_mark(params, 'mark_as_unwatched')
-	if choice == 'rate':
-		rating_values = list(range(1, 11))
-		rating_items = [{'line1': 'Rate [B]%s[/B]/10' % i, 'icon': icon} for i in rating_values]
-		rating = kodi_utils.select_dialog(rating_values, **{'items': json.dumps(rating_items), 'heading': 'Rate', 'narrow_window': 'true'})
-		if rating == None: return trakt_manager_choice(params)
-		return trakt_api.trakt_add_rating(params, rating)
-	if choice == 'unrate': return trakt_api.trakt_remove_rating(params)
-	if choice == 'reset_scrobble': return trakt_api.trakt_reset_scrobble(params)
+	from apis import trakt_api
+	if media_type == 'movie': key, media_key, media_id = ('movies', 'tmdb', int(tmdb_id))
+	else:
+		key = 'shows'
+		media_ids = [(tmdb_id, 'tmdb'), (imdb_id, 'imdb'), (tvdb_id, 'tvdb')]
+		media_id, media_key = next(item for item in media_ids if item[0] not in ('None', None, ''))
+		if media_id in (tmdb_id, tvdb_id): media_id = int(media_id)
+	data = {key: [{'ids': {media_key: media_id}}]}
 	if choice == 'add_watchlist': return trakt_api.add_to_watchlist(data)
 	if choice == 'remove_watchlist': return trakt_api.remove_from_watchlist(data)
 	if choice == 'add_collection': return trakt_api.add_to_collection(data)
 	if choice == 'remove_collection': return trakt_api.remove_from_collection(data)
-	if choice == 'add_new_list': return trakt_api.make_new_trakt_list_and_add(data)
-	if choice in ('add', 'remove'):
-		selected = trakt_api.get_trakt_list_selection(['personal'])
-		if selected == None: return trakt_manager_choice(params)
-		return trakt_api.add_to_list(selected['user'], selected['slug'], data) if choice == 'add' else trakt_api.remove_from_list(selected['user'], selected['slug'], data)
+	selected = trakt_api.get_trakt_list_selection(['personal'])
+	if selected == None: return
+	trakt_api.add_to_list(selected['user'], selected['slug'], data) if choice == 'add' else trakt_api.remove_from_list(selected['user'], selected['slug'], data)
 
 def simkl_manager_choice(params):
 	if not settings.simkl_user_active(): return kodi_utils.notification('No Active Simkl Account', 3500)
 	from apis import simkl_api
-	from modules import watched_status as ws
-	icon = params.get('icon', None) or kodi_utils.get_icon('trakt')
+	icon = params.get('icon', None) or kodi_utils.get_icon('simkl')
 	media_type = params.get('media_type', 'tvshow')
 	list_media = 'movie' if media_type == 'movie' else 'tvshow'
-	sep = ('[COLOR gray]————————————[/COLOR]', '__separator__')
 	choices = [
 		('Mark as [B]Watched[/B]', 'mark_watched'),
 		('Mark as [B]Unwatched[/B]', 'mark_unwatched'),
 		('Reset [B]Scrobble[/B]', 'reset_scrobble'),
-		sep,
 		('Add to [B]Plan to Watch[/B]', 'plantowatch_add'),
 		('Remove from [B]Plan to Watch[/B]', 'plantowatch_remove'),
 		('Add to [B]On Hold[/B]', 'hold_add'),
@@ -660,9 +636,9 @@ def simkl_manager_choice(params):
 		('Remove from [B]Dropped[/B]', 'dropped_remove'),
 	]
 	list_items = [{'line1': item[0], 'icon': icon} for item in choices]
-	choice = kodi_utils.select_dialog([i[1] for i in choices], **{'items': json.dumps(list_items), 'heading': 'Simkl Manager', 'narrow_window': 'true'})
+	kwargs = {'items': json.dumps(list_items), 'heading': 'Simkl Lists Manager'}
+	choice = kodi_utils.select_dialog([i[1] for i in choices], **kwargs)
 	if choice == None: return
-	if choice == '__separator__': return simkl_manager_choice(params)
 	tmdb_id, imdb_id, tvdb_id = params['tmdb_id'], params.get('imdb_id'), params.get('tvdb_id', 'None')
 	if choice == 'mark_watched': return _trakt_manager_mark(params, 'mark_as_watched')
 	if choice == 'mark_unwatched': return _trakt_manager_mark(params, 'mark_as_unwatched')
@@ -709,7 +685,7 @@ def assign_episode_group_choice(params):
 
 def playback_choice(params):
 	from modules.utils import get_datetime
-	from modules.debrid import debrid_for_ext_cache_check
+	from modules.debrid import debrid_cache_check_available
 	from modules.source_utils import get_aliases_titles, make_alias_dict
 	from modules import metadata
 	media_type, season, episode, episode_id = params.get('media_type'), params.get('season', ''), params.get('episode', ''), params.get('episode_id', None)
@@ -724,13 +700,13 @@ def playback_choice(params):
 		meta = function('tmdb_id', meta, settings.tmdb_api_key(), settings.mpaa_region(), get_datetime())
 	poster = meta.get('poster') or kodi_utils.get_icon('box_office')
 	aliases = get_aliases_titles(make_alias_dict(meta, meta['title']))
-	check_cache_status, check_cache_toggle =  ('OFF', 'false') if settings.external_cache_check() else ('ON', 'true')
+	check_cache_status, check_cache_toggle = ('OFF', 'false') if settings.any_external_cache_check() else ('ON', 'true')
 	items = [{'line': 'Select Source', 'function': 'scrape'},
 			{'line': 'Rescrape & Select Source', 'function': 'clear_and_rescrape'}]
-	if debrid_for_ext_cache_check():
+	if debrid_cache_check_available():
 		items.append({'line': 'Rescrape with External Cache Check [B]%s[/B]' % check_cache_status, 'function': 'rescrape_external_cache_check'})
 	items.extend([{'line': 'Clear Debrid Cache & Show Results', 'function': 'clear_debrid_cache_and_show'},
-				{'line': 'Scrape with Disabled External Providers', 'function': 'scrape_with_disabled'},
+				{'line': 'Scrape with ALL External Scrapers', 'function': 'scrape_with_disabled'},
 				{'line': 'Scrape With All Filters Ignored', 'function': 'scrape_with_filters_ignored'}])
 	if media_type == 'episode': items.append({'line': 'Scrape with Custom Episode Groups Value', 'function': 'scrape_with_episode_group'})
 	if aliases: items.append({'line': 'Scrape with an Alias', 'function': 'scrape_with_aliases'})
@@ -824,7 +800,7 @@ def playback_choice(params):
 			_process_params(episode, custom_episode, 'custom_episode')
 			if any(i in play_params for i in ('custom_season', 'custom_episode')):
 				if settings.autoplay_next_episode(): _process_params('', 'true', 'disable_autoplay_next_episode')
-		all_choice = kodi_utils.confirm_dialog(heading=meta.get('rootname', ''), text='Scrape with disabled external torrent providers?', ok_label='Yes', cancel_label='No')
+		all_choice = kodi_utils.confirm_dialog(heading=meta.get('rootname', ''), text='Scrape with ALL External Scrapers?', ok_label='Yes', cancel_label='No')
 		if all_choice == None: return kodi_utils.notification('Cancelled', 2500)
 		if all_choice: _process_params('', 'true', 'disabled_ext_ignored')
 		disable_filters_choice = kodi_utils.confirm_dialog(heading=meta.get('rootname', ''), text='Disable All Filters for Search?', ok_label='Yes', cancel_label='No')
@@ -1050,7 +1026,7 @@ def options_menu_choice(params, meta=None):
 	tmdb_id, content, poster = params_get('tmdb_id', None), params_get('content', None), params_get('poster', None)
 	is_external, from_extras = params_get('is_external') in (True, 'True', 'true'), params_get('from_extras', 'false') == 'true'
 	season, episode = params_get('season', ''), params_get('episode', '')
-	single_ep_list = ('episode.progress', 'episode.recently_watched', 'episode.next_trakt', 'episode.next_redlight', 'episode.trakt_recently_aired', 'episode.trakt_calendar')
+	single_ep_list = ('episode.progress', 'episode.recently_watched', 'episode.next_trakt', 'episode.next_redlight', 'episode.next_simkl', 'episode.trakt_recently_aired', 'episode.trakt_calendar')
 	if not content: content = kodi_utils.container_content()[:-1]
 	menu_type = content
 	if content.startswith('episode.'): content = 'episode'
@@ -1064,10 +1040,10 @@ def options_menu_choice(params, meta=None):
 	listing_append = listing.append
 	if from_extras:
 		if menu_type in ('movie', 'episode'): listing_append(('Playback Options', 'Scrapers Options', 'playback_choice'))
-		if settings.trakt_user_active(): listing_append(('Trakt Manager', '', 'trakt_manager'))
-		if settings.simkl_user_active(): listing_append(('Simkl Manager', '', 'simkl_manager'))
-		listing_append(('Personal Lists Manager', '', 'personallists_manager_choice'))
+		if settings.simkl_user_active(): listing_append(('Simkl Lists Manager', '', 'simkl_manager'))
+		if settings.trakt_user_active(): listing_append(('Trakt Lists Manager', '', 'trakt_manager'))
 		listing_append(('TMDb Lists Manager', '', 'tmdblists_manager_choice'))
+		listing_append(('Personal Lists Manager', '', 'personallists_manager_choice'))
 		listing_append(('Favorites Manager', '', 'favorites_manager_choice'))
 	if menu_type == 'tvshow': listing_append(('Play Random', 'Based On %s' % rootname, 'random'))
 	if menu_type in ('tvshow', 'season'):
@@ -1135,11 +1111,10 @@ def options_menu_choice(params, meta=None):
 		kodi_utils.close_all_dialog()
 		return random_choice({'meta': meta, 'poster': poster})
 	if choice == 'trakt_manager':
-		return trakt_manager_choice({'tmdb_id': tmdb_id, 'imdb_id': imdb_id, 'tvdb_id': tvdb_id or 'None', 'media_type': content, 'icon': poster,
-									'season': season, 'episode': episode, 'title': title})
+		return trakt_manager_choice({'tmdb_id': tmdb_id, 'imdb_id': imdb_id, 'tvdb_id': tvdb_id or 'None', 'media_type': content, 'icon': poster})
 	if choice == 'simkl_manager':
 		return simkl_manager_choice({'tmdb_id': tmdb_id, 'imdb_id': imdb_id, 'tvdb_id': tvdb_id or 'None', 'media_type': content, 'icon': poster,
-									'season': season, 'episode': episode, 'title': title})
+									'title': title, 'season': season, 'episode': episode})
 	if choice == 'personallists_manager_choice':
 		from modules.utils import get_current_timestamp
 		return personallists_manager_choice({'list_type': content, 'tmdb_id': tmdb_id, 'title': title,
@@ -1173,8 +1148,7 @@ def extras_menu_choice(params):
 	meta = function('tmdb_id', params['tmdb_id'], settings.tmdb_api_key(), settings.mpaa_region(), get_datetime())
 	if not stacked: kodi_utils.hide_busy_dialog()
 	open_window(('windows.extras', 'Extras'), 'extras.xml', meta=meta, is_external=params.get('is_external', 'true' if kodi_utils.external() else 'false'),
-															options_media_type=media_type, options_season=params.get('season', ''), options_episode=params.get('episode', ''),
-															starting_position=params.get('starting_position', None))
+															options_media_type=media_type, starting_position=params.get('starting_position', None))
 
 def open_movieset_choice(params):
 	kodi_utils.hide_busy_dialog()

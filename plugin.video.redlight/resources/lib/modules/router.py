@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 from xbmc import getInfoLabel
 from urllib.parse import parse_qsl
 from modules import kodi_utils
@@ -45,15 +46,15 @@ def routing(sys):
 	elif 'custom_key.' in mode:
 		from modules import custom_keys
 		return exec('custom_keys.%s()' % mode.split('custom_key.')[1])
+	elif 'simkl.' in mode:
+		from apis import simkl_api
+		return exec('simkl_api.%s(params)' % mode.split('.')[1])
 	elif 'trakt.' in mode:
 		if '.list' in mode:
 			from indexers import trakt_lists
 			return exec('trakt_lists.%s(params)' % mode.split('.')[2])
 		from apis import trakt_api
 		return exec('trakt_api.%s(params)' % mode.split('.')[1])
-	elif 'simkl.' in mode:
-		from apis import simkl_api
-		return exec('simkl_api.%s(params)' % mode.split('.')[1])
 	elif 'build' in mode:
 		if mode == 'build_movie_list':
 			from indexers.movies import Movies
@@ -289,6 +290,9 @@ def routing(sys):
 		from modules import updater
 		return exec('updater.%s()' % mode.split('.')[1])
 	##EXTRA modes##
+	elif 'local_backup.' in mode:
+		from modules import local_backup
+		return getattr(local_backup, mode.split('.', 1)[1])(params)
 	elif mode == 'set_view':
 		from modules.kodi_utils import set_view
 		return kodi_utils.set_view(params.get('view_type'))
@@ -321,7 +325,13 @@ def routing(sys):
 		return runner(params)
 	elif mode == 'debrid.browse_packs':
 		from modules.sources import Sources
-		return Sources().debridPacks(params.get('provider'), params.get('name'), params.get('magnet_url'), params.get('info_hash'))
+		source_item = params.get('source_item')
+		if isinstance(source_item, str):
+			try:
+				source_item = json.loads(source_item)
+			except:
+				source_item = None
+		return Sources().debridPacks(params.get('provider'), params.get('name'), params.get('magnet_url'), params.get('info_hash'), source_item=source_item)
 	elif mode == 'open_settings':
 		from modules.kodi_utils import open_settings
 		return open_settings()

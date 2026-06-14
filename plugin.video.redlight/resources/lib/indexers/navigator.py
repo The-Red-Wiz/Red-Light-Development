@@ -55,12 +55,12 @@ class Navigator:
 		self.end_directory()
 
 	def premium(self):
-		if s.authorized_debrid_check('rd'): self.add({'mode': 'navigator.real_debrid'}, 'Real Debrid', 'realdebrid')
-		if s.authorized_debrid_check('pm'): self.add({'mode': 'navigator.premiumize'}, 'Premiumize', 'premiumize')
 		if s.authorized_debrid_check('ad'): self.add({'mode': 'navigator.alldebrid'}, 'All Debrid', 'alldebrid')
-		if s.authorized_debrid_check('oc'): self.add({'mode': 'navigator.offcloud'}, 'Offcloud', 'offcloud')
-		if s.authorized_debrid_check('tb'): self.add({'mode': 'navigator.torbox'}, 'TorBox', 'torbox')
 		if s.easynews_authorized(): self.add({'mode': 'navigator.easynews'}, 'EasyNews', 'easynews')
+		if s.authorized_debrid_check('oc'): self.add({'mode': 'navigator.offcloud'}, 'Offcloud', 'offcloud')
+		if s.authorized_debrid_check('pm'): self.add({'mode': 'navigator.premiumize'}, 'Premiumize', 'premiumize')
+		if s.authorized_debrid_check('rd'): self.add({'mode': 'navigator.real_debrid'}, 'Real Debrid', 'realdebrid')
+		if s.authorized_debrid_check('tb'): self.add({'mode': 'navigator.torbox'}, 'TorBox', 'torbox')
 		self.end_directory()
 
 	def easynews(self):
@@ -109,6 +109,7 @@ class Navigator:
 		self.end_directory()
 
 	def my_content(self):
+		if s.simkl_user_active(): self.add({'mode': 'navigator.simkl_lists'}, 'Simkl Lists', 'simkl')
 		if s.trakt_user_active(): self.add({'mode': 'navigator.trakt_lists_personal'}, 'Trakt Lists', 'trakt')
 		self.add({'mode': 'navigator.trakt_lists_public'}, 'Trakt Public Lists', 'trakt')
 		if s.tmdblist_user_active(): self.add({'mode': 'navigator.tmdb_lists_personal'}, 'TMDb Lists', 'tmdb')
@@ -169,6 +170,20 @@ class Navigator:
 		if s.trakt_user_active():
 			self.add({'mode': 'navigator.build_random_lists', 'menu_type': 'trakt_personal'}, 'Random Trakt Lists (Personal)', 'trakt')
 			self.add({'mode': 'navigator.build_random_lists', 'menu_type': 'trakt_public'}, 'Random Trakt Lists (Public)', 'trakt')
+		if s.simkl_user_active(): self.add({'mode': 'navigator.build_random_lists', 'menu_type': 'simkl_lists'}, 'Random Simkl Lists', 'simkl')
+		self.end_directory()
+
+	def simkl_lists(self):
+		self.add({'mode': 'build_movie_list', 'action': 'simkl_plantowatch', 'category_name': 'Movies Plan to Watch'}, 'Movies Plan to Watch', 'simkl')
+		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_plantowatch', 'category_name': 'TV Shows Plan to Watch'}, 'TV Shows Plan to Watch', 'simkl')
+		self.add({'mode': 'build_movie_list', 'action': 'simkl_watching', 'category_name': 'Movies Watching'}, 'Movies Watching', 'simkl')
+		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_watching', 'category_name': 'TV Shows Watching'}, 'TV Shows Watching', 'simkl')
+		self.add({'mode': 'build_movie_list', 'action': 'simkl_completed', 'category_name': 'Movies Completed'}, 'Movies Completed', 'simkl')
+		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_completed', 'category_name': 'TV Shows Completed'}, 'TV Shows Completed', 'simkl')
+		self.add({'mode': 'build_movie_list', 'action': 'simkl_hold', 'category_name': 'Movies On Hold'}, 'Movies On Hold', 'simkl')
+		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_hold', 'category_name': 'TV Shows On Hold'}, 'TV Shows On Hold', 'simkl')
+		self.add({'mode': 'build_movie_list', 'action': 'simkl_dropped', 'category_name': 'Movies Dropped'}, 'Movies Dropped', 'simkl')
+		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_dropped', 'category_name': 'TV Shows Dropped'}, 'TV Shows Dropped', 'simkl')
 		self.end_directory()
 
 	def trakt_collections(self):
@@ -240,8 +255,14 @@ class Navigator:
 		self.add({'mode': 'navigator.changelog_utils'}, 'Changelog & Log Utils', 'settings2')
 		self.add({'mode': 'build_next_episode_manager'}, 'TV Shows Progress Manager', 'settings2')
 		self.add({'mode': 'navigator.shortcut_folders'}, 'Shortcut Folders Manager', 'settings2')
+		self.add({'mode': 'navigator.import_export'}, 'Import & Export', 'settings2')
 		self.add({'mode': 'navigator.maintenance'}, 'Database & Cache Maintenance', 'settings2')
 		self.add({'mode': 'language_invoker_choice', 'isFolder': 'false'}, 'Toggle Language Invoker (ADVANCED!!)', 'settings2')
+		self.end_directory()
+
+	def import_export(self):
+		self.add({'mode': 'local_backup.import_data', 'isFolder': 'false'}, 'Import Red Light Favorites & Progress', 'settings')
+		self.add({'mode': 'local_backup.export_data', 'isFolder': 'false'}, 'Export Red Light Favorites & Progress', 'settings')
 		self.end_directory()
 
 	def maintenance(self):
@@ -571,7 +592,8 @@ class Navigator:
 		'tmdb_lists': ('Random TMDb Lists', nc.random_tmdb_lists),
 		'personal_lists': ('Random Personal Lists', nc.random_personal_lists),
 		'trakt_personal': ('Random Trakt Lists (Personal)', nc.random_trakt_lists_personal),
-		'trakt_public': ('Random Trakt Lists (Public)', nc.random_trakt_lists_public)}
+		'trakt_public': ('Random Trakt Lists (Public)', nc.random_trakt_lists_public),
+		'simkl_lists': ('Random Simkl Lists', nc.random_simkl_lists)}
 		self.category_name, function = random_list_dict[self.params_get('menu_type')]
 		func = function()
 		for item in func: self.add(item, item['name'], item['iconImage'])

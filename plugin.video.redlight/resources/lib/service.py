@@ -12,7 +12,7 @@ pause_services_prop = 'redlight.pause_services'
 firstrun_update_prop = 'redlight.firstrun_update'
 current_skin_prop = 'redlight.current_skin'
 trakt_service_string = 'TraktMonitor Service Update %s - %s'
-trakt_success_line_dict = {'success': 'Trakt Update Performed', 'no account': '(Unauthorized) Trakt Update Performed'}
+trakt_success_line_dict = {'success': 'Trakt Update Performed', 'no account': '(Unauthorised) Trakt Update Performed'}
 update_string = 'Next Update in %s minutes...'
 
 class SetAddonConstants:
@@ -160,8 +160,7 @@ class SimklMonitor:
 			wait_time = 1800
 			try:
 				sync_interval, wait_time = simkl_sync_interval()
-				next_update_string = 'Simkl Sync finished - Next Sync in %s minutes'
-				next_update_string = next_update_string % sync_interval
+				next_update_string = 'Simkl Sync finished - Next Sync in %s minutes' % sync_interval
 				if simkl_user_active(): status = simkl_sync_activities()
 				else: status = 'no_auth'
 				if status == 'failed': kodi_utils.logger('Red Light', 'Simkl Sync Failed')

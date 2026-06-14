@@ -17,22 +17,36 @@ def _oc_status_label(status):
 		return 'QUEUED'
 	return (status or 'processing').upper()
 
+def _oc_item_play_link(item):
+	url = item.get('url')
+	if url: return Offcloud.requote_uri(url)
+	server, request_id, file_name = item.get('server'), item.get('requestId', ''), item.get('fileName', '')
+	if server and request_id and file_name:
+		return Offcloud.requote_uri(Offcloud.build_url(server, request_id, file_name))
+	if request_id and not item.get('isDirectory'):
+		explore = Offcloud.user_cloud_info(request_id)
+		if isinstance(explore, list) and explore:
+			return Offcloud.requote_uri(explore[0])
+	return ''
+
 def oc_cloud():
 	def _builder():
 		for count, item in enumerate(folders, 1):
 			try:
 				cm = []
 				cm_append = cm.append
-				is_folder = item['isDirectory']
-				request_id, folder_name, server = item['requestId'], item['fileName'], item['server']
+				is_folder = item.get('isDirectory', False)
+				request_id, folder_name = item.get('requestId', ''), item.get('fileName', '')
+				if not request_id or not folder_name: continue
 				delete_params = {'mode': 'offcloud.delete', 'folder_id': request_id}
 				if is_folder:
 					display = '%02d | [B]FOLDER[/B] | [I]%s [/I]' % (count, clean_file_name(normalize(folder_name)).upper())
 					url_params = {'mode': 'offcloud.browse_oc_cloud', 'folder_id': request_id}
 					cm_append(('[B]Delete Folder[/B]', 'RunPlugin(%s)' % kodi_utils.build_url(delete_params)))
 				else:
+					link = _oc_item_play_link(item)
+					if not link: continue
 					display = '%02d | [B]File[/B] | [I]%s [/I]' % (count, clean_file_name(normalize(folder_name)).upper())
-					link = Offcloud.requote_uri(Offcloud.build_url(server, request_id, folder_name))
 					url_params = {'mode': 'offcloud.resolve_oc', 'url': link, 'play': 'true'}
 					down_file_params = {'mode': 'downloader', 'action': 'cloud.offcloud_direct', 'name': folder_name, 'url': link, 'image': icon}
 					cm_append(('[B]Delete File[/B]', 'RunPlugin(%s)' % kodi_utils.build_url(delete_params)))
@@ -49,9 +63,7 @@ def oc_cloud():
 	all_items = []
 	try:
 		kodi_utils.show_busy_dialog()
-		all_items = Offcloud.user_cloud_check() or []
-		if not isinstance(all_items, list):
-			all_items = []
+		all_items = _oc_cloud_history_items()
 	except Exception:
 		all_items = []
 	finally:
@@ -65,6 +77,14 @@ def oc_cloud():
 	kodi_utils.set_view_mode('view.premium')
 	if not built and all_items:
 		kodi_utils.notification('Offcloud: Nothing ready in Cloud Storage yet. Open History for queued or processing items.', 5500)
+	elif not built and not all_items:
+		kodi_utils.notification('Offcloud: Cloud Storage is empty', 4500)
+
+def _oc_cloud_history_items():
+	try:
+		return Offcloud.user_cloud_check() or []
+	except Exception:
+		return []
 
 def oc_history():
 	def _builder():
@@ -80,14 +100,12 @@ def oc_history():
 				delete_params = {'mode': 'offcloud.delete', 'folder_id': request_id}
 				cm_append(('[B]Delete[/B]', 'RunPlugin(%s)' % kodi_utils.build_url(delete_params)))
 				if status == 'downloaded':
-					is_folder = item.get('isDirectory')
+					is_folder = item.get('isDirectory', False)
 					if is_folder:
 						url_params = {'mode': 'offcloud.browse_oc_cloud', 'folder_id': request_id}
-						is_folder = True
 					else:
-						server = item.get('server', '')
-						link = Offcloud.requote_uri(Offcloud.build_url(server, request_id, item.get('fileName', '')))
-						url_params = {'mode': 'offcloud.resolve_oc', 'url': link, 'play': 'true'}
+						link = _oc_item_play_link(item)
+						url_params = {'mode': 'offcloud.resolve_oc', 'url': link, 'play': 'true'} if link else {'mode': 'offcloud.oc_history'}
 						is_folder = False
 				else:
 					url_params = {'mode': 'offcloud.oc_history'}
@@ -107,18 +125,19 @@ def oc_history():
 	history_items = []
 	try:
 		kodi_utils.show_busy_dialog()
-		history_items = Offcloud.user_cloud_check() or []
-		kodi_utils.hide_busy_dialog()
-		if not isinstance(history_items, list):
-			history_items = []
+		history_items = _oc_cloud_history_items()
 	except Exception:
-		kodi_utils.hide_busy_dialog()
 		history_items = []
+	finally:
+		kodi_utils.hide_busy_dialog()
 	handle = int(sys.argv[1])
-	kodi_utils.add_items(handle, list(_builder()))
+	built = list(_builder())
+	kodi_utils.add_items(handle, built)
 	kodi_utils.set_content(handle, 'files')
 	kodi_utils.end_directory(handle, cacheToDisc=False)
 	kodi_utils.set_view_mode('view.premium')
+	if not built and not history_items:
+		kodi_utils.notification('Offcloud: No history items (or authorisation expired — re-link in Sources Accounts)', 5500)
 
 def browse_oc_cloud(folder_id):
 	def _builder():
@@ -166,7 +185,11 @@ def resolve_oc(params):
 def oc_account_info():
 	try:
 		kodi_utils.show_busy_dialog()
-		account_info = Offcloud.account_info()
+		account_info = Offcloud.account_info() or {}
+		kodi_utils.hide_busy_dialog()
+		if not account_info or account_info.get('error'):
+			err = account_info.get('error') if isinstance(account_info.get('error'), str) else 'Unable to load Offcloud account info'
+			return kodi_utils.ok_dialog(text='Offcloud: %s' % err)
 		body = []
 		append = body.append
 		append('[B]Email[/B]: %s' % account_info.get('email', ''))
@@ -177,9 +200,12 @@ def oc_account_info():
 		append('[B]Expires[/B]: %s' % expires)
 		if 'can_download' in account_info:
 			append('[B]Can Download[/B]: %s' % account_info.get('can_download'))
-		append('[B]Cloud Limit[/B]: {:,}'.format((account_info.get('limits') or {}).get('cloud', 0)))
+		cloud_limit = (account_info.get('limits') or {}).get('cloud', 0) or 0
+		try: cloud_limit = '{:,}'.format(int(cloud_limit))
+		except Exception: cloud_limit = str(cloud_limit)
+		append('[B]Cloud Limit[/B]: %s' % cloud_limit)
 		append('[I]Can Download and Cloud Limit are set by your Offcloud plan (offcloud.com), not in Red Light.[/I]')
-		kodi_utils.hide_busy_dialog()
 		return kodi_utils.show_text('OFFCLOUD', '\n\n'.join(body), font_size='large')
 	except Exception:
 		kodi_utils.hide_busy_dialog()
+		return kodi_utils.ok_dialog(text='Offcloud: Unable to load account info')

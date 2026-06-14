@@ -41,7 +41,7 @@ class RealDebridAPI:
 		else:
 			p_dialog_insert = '[CR]Full link copied to clipboard[CR]OR Enter this Code: [B]%s[/B]' % user_code
 		content = 'Please Scan the QR Code%s[CR]' % p_dialog_insert
-		progressDialog = progress_dialog('Real Debrid Authorize', qr_code)
+		progressDialog = progress_dialog('Real Debrid Authorise', qr_code)
 		progressDialog.update(content, 0)
 		expires_in = int(response['expires_in'])
 		sleep_interval = int(response['interval'])
@@ -100,7 +100,7 @@ class RealDebridAPI:
 		set_setting('rd.token', 'empty_setting')
 		set_setting('rd.account_id', 'empty_setting')
 		set_setting('rd.enabled', 'false')
-		notification('Real Debrid Authorization Reset', 3000)
+		notification('Real Debrid Authorisation Reset', 3000)
 
 	def account_info(self):
 		url = 'user'
@@ -202,11 +202,15 @@ class RealDebridAPI:
 		with _rd_magnet_semaphore:
 			torrent_id = None
 			try:
-				extensions = supported_video_extensions()
 				torrent = self.add_magnet(magnet_url)
+				if not torrent or 'error' in torrent:
+					return 'no_url'
 				torrent_id = torrent['id']
 				info = self.torrent_info(torrent_id)
-				files = info['files']
+				files = info.get('files') or []
+				if not files:
+					self.delete_torrent(torrent_id)
+					return 'no_url'
 				self.add_torrent_select(torrent_id, 'all')
 				return 'success'
 			except:
@@ -308,6 +312,8 @@ class RealDebridAPI:
 		try:
 			torrent_id = None
 			torrent = self.add_magnet(magnet_url)
+			if not torrent or 'error' in torrent:
+				return None
 			torrent_id = torrent['id']
 			self.add_torrent_select(torrent_id, 'all')
 			sleep(1000)

@@ -30,7 +30,7 @@ def extras_button_label_values():
 				'show_director': 'Director', 'show_options': 'Options', 'show_recommended': 'Recommended', 'show_related': 'Related', 'show_more_like_this': 'More Like This',
 				'show_similar': 'Similar', 'show_reviews': 'Reviews', 'show_comments': 'Comments', 'show_trivia': 'Trivia', 'show_blunders': 'Blunders',
 				'show_year': 'More Year', 'show_genre': 'More Genres', 'show_network': 'More Network',
-				'show_simkl_manager': 'Simkl Manager', 'show_trakt_manager': 'Trakt Manager', 'show_personallists_manager': 'Personal Lists', 'show_tmdb_manager': 'TMDb Lists',
+				'show_trakt_manager': 'Trakt Lists', 'show_simkl_manager': 'Simkl Lists', 'show_tmdb_manager': 'TMDb Lists', 'show_personallists_manager': 'Personal Lists',
 				'show_favorites_manager': 'Favorites Lists', 'playback_choice': 'Play Options', 'show_plot': 'Plot', 'show_keywords': 'Keywords',
 				'show_in_trakt_lists': 'In Trakt Lists', 'close_all': 'Close'},
 			'tvshow':
@@ -38,7 +38,7 @@ def extras_button_label_values():
 				'play_nextep': 'Play Next', 'show_options': 'Options', 'show_recommended': 'Recommended', 'show_related': 'Related', 'show_more_like_this': 'More Like This',
 				'show_similar': 'Similar', 'show_reviews': 'Reviews', 'show_comments': 'Comments', 'show_trivia': 'Trivia', 'show_blunders': 'Blunders',
 				'show_year': 'More Year', 'show_genre': 'More Genres', 'show_network': 'More Network',
-				'show_simkl_manager': 'Simkl Manager', 'show_trakt_manager': 'Trakt Manager', 'show_personallists_manager': 'Personal Lists', 'show_tmdb_manager': 'TMDb Lists',
+				'show_trakt_manager': 'Trakt Lists', 'show_simkl_manager': 'Simkl Lists', 'show_tmdb_manager': 'TMDb Lists', 'show_personallists_manager': 'Personal Lists',
 				'show_favorites_manager': 'Favorites Lists', 'play_random_episode': 'Play Random', 'show_plot': 'Plot', 'show_keywords': 'Keywords',
 				'show_in_trakt_lists': 'In Trakt Lists', 'close_all': 'Close'}}
 
@@ -55,8 +55,8 @@ def context_menu_items():
 	{'name': 'Browse Movie Set', 'value': 'browse_movie_set'}, {'name': 'Browse TV Seasons', 'value': 'browse_seasons'},
 	{'name': 'Browse Season Episodes', 'value': 'browse_episodes'}, {'name': 'Browse Recommended', 'value': 'recommended'}, {'name': 'Browse Related', 'value': 'related'},
 	{'name': 'Browse More Like This', 'value': 'more_like_this'}, {'name': 'Browse Similar', 'value': 'similar'}, {'name': 'In Trakt Lists', 'value': 'in_trakt_list'},
-	{'name': 'Simkl Manager', 'value': 'simkl_manager'}, {'name': 'Trakt Manager', 'value': 'trakt_manager'}, {'name': 'Personal Lists Manager', 'value': 'personal_manager'},
-	{'name': 'TMDb Lists Manager', 'value': 'tmdb_manager'}, {'name': 'Favorites Manager', 'value': 'favorites_manager'}, {'name': 'Mark Watched/Unwatched (Red Light)', 'value': 'mark_watched'},
+	{'name': 'Simkl Lists Manager', 'value': 'simkl_manager'}, {'name': 'Trakt Lists Manager', 'value': 'trakt_manager'}, {'name': 'TMDb Lists Manager', 'value': 'tmdb_manager'},
+	{'name': 'Personal Lists Manager', 'value': 'personal_manager'}, {'name': 'Favorites Manager', 'value': 'favorites_manager'}, {'name': 'Mark Watched/Unwatched', 'value': 'mark_watched'},
 	{'name': 'Unmark Previous Watched Episode', 'value': 'unmark_previous_episode'}, {'name': 'Exit List', 'value': 'exit'}, {'name': 'Refresh Widgets', 'value': 'refresh'},
 	{'name': 'Reload Widgets', 'value': 'reload'}]
 
@@ -64,7 +64,7 @@ def rescrape_items():
 	return [
 	{'name': 'Rescrape With No Cache Check', 'value': 'cache_ignored'},
 	{'name': 'Rescrape With IMDb Year Data', 'value': 'imdb_year'},
-	{'name': 'Rescrape With All Scrapers (Disabled external providers only)', 'value': 'with_all'},
+	{'name': 'Rescrape With Disabled External Providers', 'value': 'with_all'},
 	{'name': 'Rescrape With Episode Group', 'value': 'episode_group'},
 	{'name': 'Rescrape with Filters Ignored', 'value': 'ignore_filters'},
 	{'name': 'Offer Full Search After Early Results', 'value': 'full_scrape'}]
@@ -89,49 +89,7 @@ def get_infolabel(label):
 	return xbmc.getInfoLabel(label)
 
 def kodi_actor():
-	actor = getattr(xbmc, 'Actor', None)
-	if actor: return actor
-	return getattr(xbmcgui, 'Actor', None)
-
-def _android_kodi():
-	try:
-		if 'android' in xbmc.getPlatform().lower(): return True
-	except:
-		pass
-	try:
-		return os.path.exists('/system/build.prop')
-	except:
-		return False
-
-def call_method(obj, name, *args):
-	try:
-		fn = getattr(obj, name, None)
-		if callable(fn): fn(*args)
-	except Exception:
-		pass
-
-def get_video_info_tag(listitem):
-	try:
-		fn = getattr(listitem, 'getVideoInfoTag', None)
-		if fn is None: return None
-		if callable(fn): return fn(True)
-		return fn
-	except Exception:
-		return None
-
-def set_listitem_properties(listitem, properties):
-	call_method(listitem, 'setProperties', properties)
-
-def set_cast(info_tag, cast):
-	if not cast or not info_tag: return
-	actor_cls = kodi_actor()
-	try:
-		if actor_cls:
-			call_method(info_tag, 'setCast', [actor_cls(name=item.get('name', ''), role=item.get('role', ''), thumbnail=item.get('thumbnail', '')) for item in cast])
-			return
-	except Exception:
-		pass
-	call_method(info_tag, 'setCast', [{'name': item.get('name', ''), 'role': item.get('role', ''), 'thumbnail': item.get('thumbnail', '')} for item in cast])
+	return xbmc.Actor
 
 def translate_path(_path):
 	return xbmcvfs.translatePath(_path)
@@ -144,6 +102,33 @@ def kodi_player():
 
 def kodi_dialog():
 	return xbmcgui.Dialog()
+
+def is_android():
+	return get_visibility('System.Platform.Android')
+
+def _folder_has_entries(path):
+	try:
+		tpath = translate_path(path)
+		if not path_exists(tpath) or not os.path.isdir(tpath):
+			return False
+		with os.scandir(tpath) as scan:
+			return any(True for _ in scan)
+	except:
+		return False
+
+def safe_browse_defaultt(path):
+	# Kodi on Android can block parent navigation when browse opens inside a non-empty folder.
+	if not is_android() or not path or path in ('None', ''):
+		return path
+	if _folder_has_entries(path):
+		return ''
+	return path
+
+def browse_directory(defaultt=''):
+	return kodi_dialog().browse(0, '', '', defaultt=safe_browse_defaultt(defaultt) or None)
+
+def browse_file(mask='', defaultt=''):
+	return kodi_dialog().browse(1, '', '', mask, defaultt=safe_browse_defaultt(defaultt) or None)
 
 def addon_info(info):
 	return xbmcaddon.Addon('plugin.video.redlight').getAddonInfo(info)
@@ -219,7 +204,6 @@ def add_dir(handle, url_params, list_name, icon_image='folder', fanart_image=Non
 	add_item(handle, url, listitem, isFolder)
 
 def make_listitem():
-	if _android_kodi(): return xbmcgui.ListItem()
 	return xbmcgui.ListItem(offscreen=True)
 
 def add_item(handle, url, listitem, isFolder):
@@ -306,6 +290,16 @@ def make_session(url='https://'):
 
 def make_playlist(playlist_type='video'):
 	return xbmc.PlayList({'music': 0, 'video': 1}[playlist_type])
+
+def clear_video_playlist():
+	'''Drop episode plugin URLs left on the video playlist when browse/direct play starts during a scrape.'''
+	try:
+		make_playlist('video').clear()
+	except:
+		try:
+			execute_builtin('Playlist.Clear')
+		except:
+			pass
 
 def supported_media():
 	return xbmc.getSupportedMedia('video')
@@ -485,20 +479,6 @@ def jsonrpc_set_system_setting(setting_id, value):
 	try: return get_jsonrpc(command)
 	except: return None
 
-def clear_stream_file_state(play_url):
-	'''Clear Kodi HTTP stream resume (byte offset) so debrid CDN URLs always start at 0.'''
-	try:
-		if not play_url: return
-		base = play_url.split('|')[0].strip()
-		if not base.lower().startswith('http'): return
-		resume_reset = {'position': 0.0, 'total': 0.0}
-		for file_ref in (play_url, base):
-			get_jsonrpc({
-				'jsonrpc': '2.0', 'id': 1, 'method': 'Files.SetFileDetails',
-				'params': {'file': file_ref, 'media': 'video', 'filedetails': {'playcount': 0, 'lastplayed': '', 'resume': resume_reset}}
-			})
-	except: pass
-
 def open_settings():
 	try:
 		from apis.aiostreams_api import refresh_settings_properties
@@ -519,6 +499,7 @@ def progress_dialog(heading='', icon=None):
 	from windows.base_window import create_window
 	progress_dialog = create_window(('windows.progress', 'Progress'), 'progress.xml', heading=heading, icon=icon or addon_icon())
 	Thread(target=progress_dialog.run).start()
+	sleep(150)
 	return progress_dialog
 
 def select_dialog(function_list, **kwargs):
@@ -528,14 +509,30 @@ def select_dialog(function_list, **kwargs):
 	if kwargs.get('multi_choice', 'false') == 'true': return [function_list[i] for i in selection]
 	return function_list[selection]
 
-def confirm_dialog(heading='', text='Are you sure?', ok_label='OK', cancel_label='Cancel', default_control=11):
+_DIALOG_CONFIRM_CHARS_PER_LINE = 42
+_DIALOG_CONFIRM_VISIBLE_LINES = 5
+
+def _dialog_needs_scroll(text):
+	if not text: return False
+	plain = text
+	for tag in ('[B]', '[/B]', '[I]', '[/I]', '[COLOR yellow]', '[/COLOR]'):
+		plain = plain.replace(tag, '')
+	lines = [i.strip() for i in plain.split('[CR]') if i.strip()]
+	wrapped = sum(max(1, (len(line) + _DIALOG_CONFIRM_CHARS_PER_LINE - 1) // _DIALOG_CONFIRM_CHARS_PER_LINE) for line in lines)
+	return wrapped > _DIALOG_CONFIRM_VISIBLE_LINES
+
+def confirm_dialog(heading='', text='Are you sure?', ok_label='OK', cancel_label='Cancel', default_control=11, scroll=False):
 	from windows.base_window import open_window
-	kwargs = {'heading': heading, 'text': text, 'ok_label': ok_label, 'cancel_label': cancel_label, 'default_control': default_control}
+	needs_scroll = scroll and _dialog_needs_scroll(text)
+	kwargs = {'heading': heading, 'text': text, 'ok_label': ok_label, 'cancel_label': cancel_label, 'default_control': default_control,
+				'scroll': 'true' if needs_scroll else 'false', 'scroll_focus': 'true' if needs_scroll else 'false'}
 	return open_window(('windows.default_dialogs', 'Confirm'), 'confirm.xml', **kwargs)
 
-def ok_dialog(heading='', text='No Results', ok_label='OK'):
+def ok_dialog(heading='', text='No Results', ok_label='OK', scroll=False):
 	from windows.base_window import open_window
-	kwargs = {'heading': heading, 'text': text, 'ok_label': ok_label}
+	needs_scroll = scroll and _dialog_needs_scroll(text)
+	kwargs = {'heading': heading, 'text': text, 'ok_label': ok_label,
+				'scroll': 'true' if needs_scroll else 'false', 'scroll_focus': 'true' if needs_scroll else 'false'}
 	return open_window(('windows.default_dialogs', 'OK'), 'ok.xml', **kwargs)
 
 def show_text(heading, text=None, file=None, font_size='small', kodi_log=False):
@@ -630,30 +627,42 @@ def upload_logfile(params):
 	if log_file == None: return
 	log_name, log_file = log_file
 	if not confirm_dialog(heading=log_name): return
-	show_busy_dialog()
+	progressDialog = None
 	url = 'https://paste.kodi.tv/'
 	log_file = translate_path('special://logpath/%s' % log_file)
 	if not path_exists(log_file): return ok_dialog(text='Error. Log Upload Failed')
 	try:
-		with open_file(log_file) as f: text = f.read()
-		UserAgent = 'script.kodi.loguploader: 1.0'
-		response = requests.post('%s%s' % (url, 'documents'), data=text.encode('utf-8', errors='ignore'), headers={'User-Agent': UserAgent}).json()
-		if 'key' in response:
-			user_code = response['key']
-			url = '%s%s' % (url, user_code)
-			copy2clip(url)
-			qr_code = make_qrcode(url) or ''
-			progressDialog = progress_dialog(heading='Kodi Log Uploader', icon=qr_code)
-			count, success = 20, None
-			while not progressDialog.iscanceled() and count >= 0 and success == None:
-				try:
-					count -= 1
-					progressDialog.update('Share or Access with this url: [B]%s[/B][CR]Or Access using this QR Code' % url, count)
-					sleep(2500)
-				except: success = False
-		else: ok_dialog(text='Error. Log Upload Failed')
-	except: ok_dialog(text='Error. Log Upload Failed')
-	hide_busy_dialog()
+		show_busy_dialog()
+		try:
+			with open_file(log_file) as f: text = f.read()
+			UserAgent = 'script.kodi.loguploader: 1.0'
+			response = requests.post('%s%s' % (url, 'documents'), data=text.encode('utf-8', errors='ignore'), headers={'User-Agent': UserAgent}).json()
+		finally:
+			hide_busy_dialog()
+		if 'key' not in response:
+			return ok_dialog(text='Error. Log Upload Failed')
+		user_code = response['key']
+		url = '%s%s' % (url, user_code)
+		copy2clip(url)
+		qr_code = make_qrcode(url) or ''
+		progressDialog = progress_dialog(heading='Kodi Log Uploader', icon=qr_code)
+		countdown_secs = 120
+		remaining = countdown_secs
+		while not progressDialog.iscanceled() and remaining > 0:
+			progressDialog.update(
+				'Share or Access with this url: [B]%s[/B][CR]Or scan the QR code on another device.[CR][CR]Auto-closes in [B]%d[/B] seconds (Back to dismiss now).' % (url, remaining),
+				int(100 * remaining / countdown_secs))
+			for _ in range(10):
+				if progressDialog.iscanceled(): break
+				sleep(100)
+			remaining -= 1
+	except:
+		ok_dialog(text='Error. Log Upload Failed')
+	finally:
+		hide_busy_dialog()
+		if progressDialog:
+			try: progressDialog.close()
+			except: pass
 
 def fetch_kodi_imagecache(image):
 	import sqlite3 as database

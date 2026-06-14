@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import datetime
-from threading import Lock
 from caches.meta_cache import cache_function
 from caches.lists_cache import lists_cache_object
 from modules.settings import get_meta_filter, tmdb_api_key, lists_cache_duraton
@@ -8,7 +7,6 @@ from modules.kodi_utils import make_session, remove_keys
 # from modules.kodi_utils import logger
 
 session = make_session('https://api.themoviedb.org/3')
-_tmdb_lock = Lock()
 
 def tmdb_dict_removals():
 	return ('adult', 'backdrop_path', 'genre_ids', 'original_language', 'original_title', 'overview', 'popularity', 'vote_count', 'video', 'origin_country', 'original_name')
@@ -486,8 +484,8 @@ def tmdb_anime_genres(genre_id, page_no):
 def tmdb_anime_providers(provider, page_no):
 	api_key = tmdb_api_key()
 	if api_key in (None, 'empty_setting', ''): return no_api_key()
-	string = 'tmdb_anime_providers_%s_%s' % (provider, page_no)
-	url = 'https://api.themoviedb.org/3/discover/tv?api_key=%s&with_keywords=210048&watch_region=US&with_watch_providers=%s&include_null_first_air_dates=false' \
+	string = 'tmdb_anime_providers2_%s_%s' % (provider, page_no)
+	url = 'https://api.themoviedb.org/3/discover/tv?api_key=%s&sort_by=popularity.desc&with_keywords=210024&watch_region=US&with_watch_providers=%s&include_null_first_air_dates=false' \
 	'&first_air_date.lte=%s&page=%s' % (api_key, provider, get_current_date(), page_no)
 	return lists_cache_object(get_data, string, url)
 
@@ -592,7 +590,6 @@ def get_data(url):
 	return get_tmdb(url).json()
 
 def get_tmdb(url):
-	try:
-		with _tmdb_lock: response = session.get(url, timeout=20.0)
+	try: response = session.get(url, timeout=20.0)
 	except: response = None
 	return response

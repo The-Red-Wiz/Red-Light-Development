@@ -35,36 +35,6 @@ class TaskPool:
 		[i.start() for i in threads]
 		return threads
 
-def gui_list_items_serial():
-	try:
-		import xbmc
-		if 'android' in xbmc.getPlatform().lower(): return True
-	except:
-		pass
-	try:
-		import os
-		return os.path.exists('/system/build.prop')
-	except:
-		return False
-
-def taskpool_tasks(target, item_list, max_size=60):
-	item_list = list(item_list)
-	if not item_list: return []
-	if gui_list_items_serial():
-		wrapped = not isinstance(item_list[0], tuple)
-		for item in item_list:
-			target(*(item,) if wrapped else item)
-		return []
-	return TaskPool().tasks(target, item_list, min(len(item_list), max_size))
-
-def taskpool_tasks_enumerate(target, item_list, max_size=60):
-	item_list = list(item_list)
-	if not item_list: return []
-	if gui_list_items_serial():
-		for p, tag in enumerate(item_list, 1): target(p, tag)
-		return []
-	return TaskPool().tasks_enumerate(target, item_list, min(len(item_list), max_size))
-
 def make_thread_list(_target, _list):
 	_max_threads = max_threads()
 	for item in _list:
@@ -162,52 +132,16 @@ def subtract_dates(date1, date2):
 	return (date1 - date2).days
 	return day
 
-def _parse_datetime(data, fmt):
-	try:
-		import _strptime
-	except ImportError:
-		pass
-	try:
-		parse = time.strptime
-		if callable(parse):
-			return datetime(*(parse(data, fmt)[0:6]))
-	except (ValueError, TypeError, AttributeError):
-		pass
-	return None
-
 def datetime_workaround(data, str_format):
-	if not data:
-		return None
-	if not isinstance(data, str):
-		data = str(data)
-	data = data.strip()
-	if 'T' in data:
-		normalized = data.replace('T', ' ', 1)
-		if normalized.endswith('Z'):
-			normalized = normalized[:-1].strip()
-		else:
-			for sep in ('+', '-'):
-				idx = normalized.find(sep, 11)
-				if idx > 0:
-					normalized = normalized[:idx].strip()
-					break
-		if '.' in normalized and '%f' not in str_format:
-			normalized = normalized.split('.')[0]
-		data = normalized
-	formats = [str_format]
-	if str_format == '%Y-%m-%d %H:%M:%S':
-		formats.extend(('%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ'))
-	elif '%f' in str_format and '.' not in data:
-		formats.insert(0, str_format.replace('.%f', ''))
-	for fmt in formats:
-		parsed = _parse_datetime(data, fmt)
-		if parsed: return parsed
-	try:
-		parsed = _parse_datetime(data.split(' ')[0], '%Y-%m-%d')
-		if parsed: return parsed
-	except Exception:
-		pass
-	return datetime(2000, 1, 1)
+	if not data: return None
+	for fmt in (str_format, '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+		for parser in (datetime.strptime, lambda d, f: datetime(*(time.strptime(d, f)[0:6]))):
+			try: return parser(data, fmt)
+			except: pass
+	if 'T' in str(data):
+		try: return datetime(*(time.strptime(str(data).rstrip('Z').split('.')[0], '%Y-%m-%dT%H:%M:%S')[0:6]))
+		except: pass
+	raise ValueError("time data %r does not match format %r" % (data, str_format))
 
 def date_difference(current_date, compare_date, difference_tolerance, allow_postive_difference=False):
 	try:
@@ -403,19 +337,32 @@ def unzip(zip_location, destination_location, destination_check, show_busy=True)
 	if show_busy: hide_busy_dialog()
 	return status
 
+def _prune_qr_cache(folder, keep=30):
+	try:
+		import glob
+		from os import path, remove
+		files = sorted(glob.glob(path.join(folder, 'qr_*.png')), key=path.getmtime, reverse=True)
+		for stale in files[keep:]:
+			try: remove(stale)
+			except: pass
+	except: pass
+
 def make_qrcode(url):
 	if url == None: return
 	import segno
 	from hashlib import sha1
 	from os import path
-	from modules.kodi_utils import addon_profile
+	from time import time
+	from modules.kodi_utils import addon_profile, translate_path
 	try:
+		profile = addon_profile()
 		qr_id = sha1(url.encode('utf-8')).hexdigest()[:12]
-		art_path = path.join(addon_profile(), 'qr_%s.png' % qr_id)
+		art_path = path.join(profile, 'qr_%s_%s.png' % (qr_id, int(time() * 1000)))
 		qrcode = segno.make(url, micro=False)
 		qrcode.save(art_path, scale=20)
+		_prune_qr_cache(profile)
 	except: return
-	return art_path
+	return translate_path(art_path)
 
 def make_tinyurl(url):
 	if not url:

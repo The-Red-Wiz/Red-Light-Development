@@ -35,7 +35,7 @@ class AllDebridAPI:
 		else: p_dialog_insert = '[CR]Full link copied to clipboard[CR]OR Enter this Code: [B]%s[/B]' % user_code
 		sleep_interval = 5
 		content = 'Please Scan the QR Code%s[CR]' % p_dialog_insert
-		progressDialog = progress_dialog('All Debrid Authorize', qr_code)
+		progressDialog = progress_dialog('All Debrid Authorise', qr_code)
 		progressDialog.update(content, 0)
 		start, time_passed = time.time(), 0
 		sleep(2000)
@@ -69,7 +69,7 @@ class AllDebridAPI:
 		set_setting('ad.token', 'empty_setting')
 		set_setting('ad.account_id', 'empty_setting')
 		set_setting('ad.enabled', 'false')
-		notification('All Debrid Authorization Reset', 3000)
+		notification('All Debrid Authorisation Reset', 3000)
 
 	def account_info(self):
 		response = self._get('user')
@@ -160,8 +160,15 @@ class AllDebridAPI:
 		url = 'magnet/upload'
 		url_append = '&magnet=%s' % magnet
 		result = self._get(url, url_append)
-		if 'error' in result: return None
-		return result['magnets'][0].get('id', None)
+		if not result or 'error' in result:
+			return 'no_url'
+		try:
+			transfer_id = result['magnets'][0].get('id', None)
+		except (IndexError, KeyError, TypeError):
+			return 'no_url'
+		if not transfer_id:
+			return 'no_url'
+		return transfer_id
 
 	def list_transfer(self, transfer_id):
 		url = 'magnet/status'

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import sys
 import json
-from threading import Lock
 from modules.metadata import movie_meta, movieset_meta
-from modules.utils import get_datetime, get_current_timestamp, paginate_list, jsondate_to_datetime, taskpool_tasks_enumerate, manual_function_import
+from modules.utils import get_datetime, get_current_timestamp, paginate_list, jsondate_to_datetime, TaskPool, manual_function_import
 from modules import kodi_utils, settings, watched_status
 logger = kodi_utils.logger
 
@@ -14,8 +13,10 @@ class Movies:
 	'tmdb_movies_genres', 'tmdb_movies_companies', 'tmdb_movies_search', 'tmdb_movie_keyword_results', 'tmdb_movie_keyword_results_direct', 'ai_similar')
 	personal = {'in_progress_movies': ('modules.watched_status', 'get_in_progress_movies'), 'favorites_movies': ('modules.favorites', 'get_favorites'),
 	'watched_movies': ('modules.watched_status', 'get_watched_items'), 'recent_watched_movies': ('modules.watched_status', 'get_recently_watched')}
-	trakt_main = ('trakt_movies_trending', 'trakt_movies_trending_recent', 'trakt_movies_most_watched', 'trakt_movies_most_favorited', 'trakt_movies_top10_boxoffice')
+	most_watched = ('movies_most_watched', 'trakt_movies_most_watched')
+	trakt_main = ('trakt_movies_trending', 'trakt_movies_trending_recent', 'trakt_movies_most_favorited', 'trakt_movies_top10_boxoffice')
 	trakt_personal = ('trakt_collection', 'trakt_watchlist', 'trakt_collection_lists', 'trakt_watchlist_lists', 'trakt_favorites')
+	simkl_personal = ('simkl_plantowatch', 'simkl_completed', 'simkl_watching', 'simkl_hold', 'simkl_dropped')
 
 	def __init__(self, params):
 		self.params = params
@@ -24,8 +25,10 @@ class Movies:
 		self.id_type, self.list, self.action = self.params_get('id_type', 'tmdb_id'), self.params_get('list', []), self.params_get('action', None)
 		self.tmdb_api_key = settings.tmdb_api_key()
 		self.items, self.new_page, self.total_pages, self.is_external = [], {}, None, kodi_utils.external()
-		if self.is_external: self.widget_hide_next_page = settings.widget_hide_next_page()
-		else: self.widget_hide_next_page = False
+		if self.is_external:
+			self.widget_hide_next_page = settings.widget_hide_next_page()
+			self.widget_hide_watched = self.action not in ('watched_movies', 'recent_watched_movies', 'in_progress_movies') and settings.widget_hide_watched()
+		else: self.widget_hide_next_page, self.widget_hide_watched = False, False
 		self.playback_key = settings.playback_key()
 		self.play_mode = 'playback.%s' % settings.playback_key()
 		self.custom_order = self.params_get('custom_order', 'false') == 'true'
@@ -39,6 +42,9 @@ class Movies:
 			try: page_no = int(self.params_get('new_page', '1'))
 			except: page_no = self.params_get('new_page')
 			if self.action in self.personal: var_module, import_function = self.personal[self.action]
+			elif self.action in self.most_watched:
+				from modules.most_watched import normalize_most_watched_action
+				var_module, import_function = 'modules.most_watched', normalize_most_watched_action(self.action)
 			else: var_module, import_function = 'apis.%s_api' % self.action.split('_')[0], self.action
 			try: function = manual_function_import(var_module, import_function)
 			except: pass
@@ -61,6 +67,17 @@ class Movies:
 				self.list = [i['media_id'] for i in data]
 				if total_pages > 2: self.total_pages = total_pages
 				if total_pages > page_no: self.new_page = {'new_page': str(page_no + 1), 'paginate_start': self.paginate_start}
+			elif self.action in self.most_watched:
+				from modules.most_watched import most_watched_category_name, simkl_most_watched_has_next, most_watched_provider, normalize_most_watched_action
+				category_name = most_watched_category_name(self.action)
+				if category_name: self.category_name = category_name
+				self.id_type = 'trakt_dict'
+				data = function(page_no) or []
+				try: self.list = [i['movie']['ids'] for i in data]
+				except: self.list = [i['ids'] for i in data]
+				if most_watched_provider() == 'simkl' and data and simkl_most_watched_has_next(normalize_most_watched_action(self.action), page_no):
+					self.new_page = {'new_page': str(page_no + 1)}
+				elif data: self.new_page = {'new_page': str(page_no + 1)}
 			elif self.action in self.trakt_main:
 				self.id_type = 'trakt_dict'
 				data = function(page_no)
@@ -72,6 +89,15 @@ class Movies:
 				data = function('movies', page_no)
 				if self.action in ('trakt_collection_lists', 'trakt_watchlist_lists', 'trakt_favorites'): total_pages = 1
 				else: data, total_pages = self.paginate_list(data, page_no)
+				self.list = [i['media_ids'] for i in data]
+				if total_pages > 2: self.total_pages = total_pages
+				try:
+					if total_pages > page_no: self.new_page = {'new_page': str(page_no + 1), 'paginate_start': self.paginate_start}
+				except: pass
+			elif self.action in self.simkl_personal:
+				self.id_type = 'trakt_dict'
+				data = function('movies', page_no)
+				data, total_pages = self.paginate_list(data, page_no)
 				self.list = [i['media_ids'] for i in data]
 				if total_pages > 2: self.total_pages = total_pages
 				try:
@@ -119,7 +145,7 @@ class Movies:
 			if self.new_page and not self.widget_hide_next_page:
 				self.new_page.update({'mode': 'build_movie_list', 'action': self.action, 'category_name': self.category_name})
 				kodi_utils.add_dir(handle, self.new_page, 'Next Page (%s) >>' % self.new_page['new_page'], 'nextpage', kodi_utils.get_icon('nextpage_landscape'))
-		except Exception as e: logger('Red Light', 'movies.fetch_list failed action=%s: %s' % (self.action, e))
+		except: pass
 		kodi_utils.set_content(handle, 'movies')
 		kodi_utils.set_category(handle, self.category_name)
 		kodi_utils.end_directory(handle, cacheToDisc=False if self.is_external else True)
@@ -127,20 +153,14 @@ class Movies:
 			if self.params_get('refreshed') == 'true': kodi_utils.sleep(1000)
 			kodi_utils.set_view_mode('view.movies', 'movies', self.is_external)
 		
-	def fetch_movie_meta(self, _position, _id):
+	def build_movie_content(self, _position, _id):
 		try:
 			meta = movie_meta(self.id_type, _id, self.tmdb_api_key, self.mpaa_region, self.current_date, self.current_time)
 			if not meta or 'blank_entry' in meta: return
-			with self._meta_lock:
-				self._meta_results.append((_position, meta))
-		except:
-			pass
-
-	def build_movie_listitem(self, _position, meta):
-		try:
 			listitem = self.make_listitem()
 			cm = []
 			cm_append = cm.append
+			set_properties = listitem.setProperties
 			clearprog_params, watched_status_params = '', ''
 			meta_get = meta.get
 			premiered = meta_get('premiered')
@@ -154,8 +174,7 @@ class Movies:
 			fanart = meta_get('fanart') or self.fanart_empty
 			clearlogo, landscape = meta_get('clearlogo') or '', meta_get('landscape') or ''
 			thumb = poster or landscape or fanart
-			extra_info = meta_get('extra_info') or {}
-			movieset_id, movieset_name = extra_info.get('collection_id'), extra_info.get('collection_name')
+			movieset_id, movieset_name = meta_get('extra_info').get('collection_id', None), meta_get('extra_info').get('collection_name', None)
 			first_airdate = jsondate_to_datetime(premiered, '%Y-%m-%d', True)
 			duration = meta_get('duration')
 			if not first_airdate or self.current_date < first_airdate: unaired = True
@@ -205,16 +224,17 @@ class Movies:
 			cm_append(['more_like_this', ('[B]Browse More Like This[/B]', self.window_command % browse_more_like_this_params)])
 			if self.ai_model_active: cm_append(['similar', ('[B]Browse Similar[/B]', self.window_command % browse_similar_params)])
 			cm_append(['in_trakt_list', ('[B]In Trakt Lists[/B]', self.window_command % browse_in_trakt_list_params)])
-			if simkl_manager_params: cm_append(['simkl_manager', ('[B]Simkl Manager[/B]', 'RunPlugin(%s)' % simkl_manager_params)])
-			cm_append(['trakt_manager', ('[B]Trakt Manager[/B]', 'RunPlugin(%s)' % trakt_manager_params)])
-			cm_append(['personal_manager', ('[B]Personal Lists Manager[/B]', 'RunPlugin(%s)' % personal_manager_params)])
+			if simkl_manager_params: cm_append(['simkl_manager', ('[B]Simkl Lists Manager[/B]', 'RunPlugin(%s)' % simkl_manager_params)])
+			cm_append(['trakt_manager', ('[B]Trakt Lists Manager[/B]', 'RunPlugin(%s)' % trakt_manager_params)])
 			cm_append(['tmdb_manager', ('[B]TMDb Lists Manager[/B]', 'RunPlugin(%s)' % tmdb_manager_params)])
+			cm_append(['personal_manager', ('[B]Personal Lists Manager[/B]', 'RunPlugin(%s)' % personal_manager_params)])
 			cm_append(['favorites_manager', ('[B]Favorites Manager[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
 			if playcount:
-				cm_append(['mark_watched', ('[B]Mark Unwatched (Red Light)[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'watched_status.mark_movie', 'action': 'mark_as_unwatched',
+				if self.widget_hide_watched: return
+				cm_append(['mark_watched', ('[B]Mark Unwatched[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'watched_status.mark_movie', 'action': 'mark_as_unwatched',
 											'tmdb_id': tmdb_id, 'title': title}))])
 			elif not unaired:
-				cm_append(['mark_watched', ('[B]Mark Watched (Red Light)[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'watched_status.mark_movie', 'action': 'mark_as_watched',
+				cm_append(['mark_watched', ('[B]Mark Watched[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'watched_status.mark_movie', 'action': 'mark_as_watched',
 											'tmdb_id': tmdb_id, 'title': title}))])
 			if progress:
 				cm_append(['mark_watched', ('[B]Clear Progress[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'watched_status.erase_bookmark', 'media_type': 'movie',
@@ -224,38 +244,23 @@ class Movies:
 				cm.extend([['refresh', ('[B]Refresh Widgets[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'refresh_widgets'}))],
 						['reload', ('[B]Reload Widgets[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'kodi_refresh'}))]])
 			cm = self.context_menu(cm)
-			info_tag = kodi_utils.get_video_info_tag(listitem)
-			if info_tag:
-				ku_call = kodi_utils.call_method
-				ku_call(info_tag, 'setMediaType', 'movie')
-				ku_call(info_tag, 'setTitle', title)
-				ku_call(info_tag, 'setOriginalTitle', meta_get('original_title'))
-				ku_call(info_tag, 'setGenres', meta_get('genre'))
-				ku_call(info_tag, 'setDuration', duration)
-				ku_call(info_tag, 'setPlaycount', playcount)
-				ku_call(info_tag, 'setPlot', meta_get('plot'))
-				ku_call(info_tag, 'setUniqueIDs', {'imdb': imdb_id, 'tmdb': str_tmdb_id})
-				ku_call(info_tag, 'setIMDBNumber', imdb_id)
-				ku_call(info_tag, 'setPremiered', premiered)
-				ku_call(info_tag, 'setYear', int(year))
-				ku_call(info_tag, 'setRating', float(meta_get('rating') or 0))
-				ku_call(info_tag, 'setVotes', int(meta_get('votes') or 0))
-				ku_call(info_tag, 'setMpaa', meta_get('mpaa'))
-				ku_call(info_tag, 'setCountries', meta_get('country'))
-				ku_call(info_tag, 'setTrailer', meta_get('trailer'))
-				ku_call(info_tag, 'setTagLine', meta_get('tagline'))
-				ku_call(info_tag, 'setStudios', meta_get('studio'))
-				ku_call(info_tag, 'setWriters', meta_get('writer'))
-				ku_call(info_tag, 'setDirectors', meta_get('director'))
-				cast = meta_get('short_cast', []) or meta_get('cast', []) or []
-				kodi_utils.set_cast(info_tag, cast)
-				if progress:
-					ku_call(info_tag, 'setResumePoint', watched_status.get_resume_seconds(progress, duration))
-					kodi_utils.set_listitem_properties(listitem, {'WatchedProgress': progress})
-			kodi_utils.call_method(listitem, 'setLabel', title)
-			kodi_utils.call_method(listitem, 'addContextMenuItems', cm)
-			kodi_utils.call_method(listitem, 'setArt', {'poster': poster, 'fanart': fanart, 'icon': poster, 'clearlogo': clearlogo, 'landscape': landscape, 'thumb': thumb})
-			kodi_utils.set_listitem_properties(listitem, {
+			info_tag = listitem.getVideoInfoTag(True)
+			info_tag.setMediaType('movie'), info_tag.setTitle(title), info_tag.setOriginalTitle(meta_get('original_title')), info_tag.setGenres(meta_get('genre'))
+			info_tag.setDuration(duration), info_tag.setPlaycount(playcount), info_tag.setPlot(meta_get('plot'))
+			info_tag.setUniqueIDs({'imdb': imdb_id, 'tmdb': str_tmdb_id}), info_tag.setIMDBNumber(imdb_id), info_tag.setPremiered(premiered)
+			info_tag.setYear(int(year)), info_tag.setRating(meta_get('rating')), info_tag.setVotes(meta_get('votes')), info_tag.setMpaa(meta_get('mpaa'))
+			info_tag.setCountries(meta_get('country')), info_tag.setTrailer(meta_get('trailer'))
+			info_tag.setTagLine(meta_get('tagline')), info_tag.setStudios(meta_get('studio'))
+			info_tag.setWriters(meta_get('writer')), info_tag.setDirectors(meta_get('director'))
+			cast = meta_get('short_cast', []) or meta_get('cast', []) or []
+			info_tag.setCast([self.kodi_actor(name=item['name'], role=item['role'], thumbnail=item['thumbnail']) for item in cast])
+			if progress:
+				info_tag.setResumePoint(watched_status.get_resume_seconds(progress, duration))
+				set_properties({'WatchedProgress': progress})
+			listitem.setLabel(title)
+			listitem.addContextMenuItems(cm)
+			listitem.setArt({'poster': poster, 'fanart': fanart, 'icon': poster, 'clearlogo': clearlogo, 'landscape': landscape, 'thumb': thumb})
+			set_properties({
 				'belongs_to_collection': belongs_to_movieset,
 				'redlight.extras_params': extras_params,
 				'redlight.options_params': options_params,
@@ -266,18 +271,17 @@ class Movies:
 				'redlight.browse_more_like_this_params': browse_more_like_this_params,
 				'redlight.browse_similar_params': browse_similar_params,
 				'redlight.browse_in_trakt_list_params': browse_in_trakt_list_params,
-				'redlight.simkl_manager_params': simkl_manager_params,
 				'redlight.trakt_manager_params': trakt_manager_params,
+				'redlight.simkl_manager_params': simkl_manager_params,
 				'redlight.personal_manager_params': personal_manager_params,
 				'redlight.tmdb_manager_params': tmdb_manager_params,
 				'redlight.favorites_manager_params': favorites_manager_params
 				})
 			self.append(((url_params, listitem, False), _position))
-		except:
-			pass
+		except: pass
 
 	def worker(self):
-		self.make_listitem, self.build_url = kodi_utils.make_listitem, kodi_utils.build_url
+		self.kodi_actor, self.make_listitem, self.build_url = kodi_utils.kodi_actor(), kodi_utils.make_listitem, kodi_utils.build_url
 		self.poster_empty, self.fanart_empty = kodi_utils.get_icon('box_office'), kodi_utils.addon_fanart()
 		self.current_date, self.current_time, self.watched_indicators = get_datetime(), get_current_timestamp(), settings.watched_indicators()
 		self.cm_sort_order = settings.cm_sort_order()
@@ -286,26 +290,20 @@ class Movies:
 		self.ai_model_active = settings.ai_model_active()
 		rpdb_info = settings.rpdb_info('movie')
 		self.rpdb_api_key, self.rpdb_format = rpdb_info['rpdb_api_key'], rpdb_info['rpdb_format']
-		display_db = watched_status.get_database(self.watched_indicators)
-		sync_db = watched_status.get_database(settings.playback_progress_provider())
-		self.watched_info = watched_status.watched_info_movie(display_db)
-		self.bookmarks = watched_status.get_bookmarks_movie(sync_db)
+		watched_db = watched_status.get_database(self.watched_indicators)
+		self.watched_info, self.bookmarks = watched_status.watched_info_movie(watched_db), watched_status.get_bookmarks_movie(watched_db)
 		self.window_command = 'ActivateWindow(Videos,%s,return)' if self.is_external else 'Container.Update(%s)'
 		open_action = settings.media_open_action('movie')
 		self.open_movieset = open_action in (2, 3) and not self.movieset_list_active
 		self.open_extras = open_action in (1, 3)
-		self._meta_results, self._meta_lock = [], Lock()
 		if self.custom_order:
-			for _position, _id in enumerate(self.list, 1):
-				self.fetch_movie_meta(_position, _id)
-		else:
-			threads = taskpool_tasks_enumerate(self.fetch_movie_meta, self.list, min(len(self.list), settings.max_threads()))
+			threads = TaskPool().tasks(self.build_movie_content, self.list, min(len(self.list), settings.max_threads()))
 			[i.join() for i in threads]
-		self._meta_results.sort(key=lambda k: k[0])
-		for _position, meta in self._meta_results:
-			self.build_movie_listitem(_position, meta)
-		self.items.sort(key=lambda k: k[1])
-		self.items = [i[0] for i in self.items]
+		else:
+			threads = TaskPool().tasks_enumerate(self.build_movie_content, self.list, min(len(self.list), settings.max_threads()))
+			[i.join() for i in threads]
+			self.items.sort(key=lambda k: k[1])
+			self.items = [i[0] for i in self.items]
 		return self.items
 
 	def context_menu(self, context_menu_items):

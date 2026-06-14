@@ -533,20 +533,11 @@
                       <item>
                           <visible>Container(2000).HasFocus(10)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting) | !String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <property name="setting_label">Menus &amp; Widgets Provider</property>
+                          <property name="setting_label">Watched Status Provider</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.watched_indicators_name)]</property>
-                          <property name="setting_description">Watched ticks, hide-watched filtering, and in-addon Watched / browse lists. Red Light (local), Trakt, or Simkl (authorize under Meta Accounts).</property>
+                          <property name="setting_description">Watched ticks, resume bars, scrobble, Next Episodes, and In Progress lists. Red Light (local), Simkl, or Trakt (authorise under Meta Accounts).</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=watched_indicators)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting) | !String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <property name="setting_label">Playback &amp; Progress Provider</property>
-                          <property name="setting_type">action</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.sync_indicators_name)]</property>
-                          <property name="setting_description">Resume points, scrobble, Next Episodes, and In Progress lists. Red Light (local), Trakt, or Simkl. Can differ from Menus &amp; Widgets when both Trakt and Simkl are authorized.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=sync_indicators)</onclick>
                       </item>
         <!-- Simkl Cache -->
                       <item>
@@ -607,6 +598,15 @@
                           <property name="setting_description">Enable this and Red Light will refresh widgets after performing a Trakt Sync if there were any changes</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=trakt.refresh_widgets)</onclick>
                       </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
+                          <property name="setting_label">Force Trakt Sync</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Pull watched status and playback progress from Trakt now</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=trakt.trakt_force_sync)</onclick>
+                      </item>
         <!-- UTC Time Offset -->
                       <item>
                           <visible>Container(2000).HasFocus(10)</visible>
@@ -660,6 +660,21 @@
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.image_download_directory)]</property>
                           <property name="setting_description">Choose your download location for Images</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_path&amp;setting_id=image_download_directory)</onclick>
+                      </item>
+        <!-- Import & Export -->
+                      <item>
+                          <visible>Container(2000).HasFocus(10)</visible>
+                          <property name="setting_label">Import &amp; Export</property>
+                          <property name="setting_type">separator</property>
+                          <onclick>noop</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10)</visible>
+                          <property name="setting_label">Import &amp; Export Directory</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.import_export_directory)]</property>
+                          <property name="setting_description">Choose your default location for Red Light favorites and progress backup files</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_path&amp;setting_id=import_export_directory)</onclick>
                       </item>
 <!-- FEATURES 20-->
         <!-- Extras -->
@@ -1207,6 +1222,14 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(30)</visible>
+                          <property name="setting_label">Hide Watched Items in Widgets</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.widget_hide_watched)]</property>
+                          <property name="setting_description">Enable this and watched items will be hidden in Red Light widgets</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=widget_hide_watched)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(30)</visible>
                           <property name="setting_label">Hide Next Page Item in Widgets</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.widget_hide_next_page)]</property>
@@ -1433,19 +1456,19 @@
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <property name="setting_label">Authorize</property>
+                          <property name="setting_label">Authorise</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Authorize your Simkl account. PIN shown on screen — visit simkl.com/pin</property>
+                          <property name="setting_description">Authorise your Simkl account. PIN shown on screen — visit simkl.com/pin</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=simkl.simkl_authenticate)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <property name="setting_label">Revoke Authorization</property>
+                          <property name="setting_label">Revoke Authorisation</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.simkl.user)]</property>
-                          <property name="setting_description">Revoke authorization of your Simkl account</property>
+                          <property name="setting_description">Revoke authorisation of your Simkl account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=simkl.simkl_revoke_authentication)</onclick>
                       </item>
         <!-- Trakt -->
@@ -1458,19 +1481,20 @@
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <property name="setting_label">Authorize</property>
+                          <property name="setting_label">Authorise</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Authorize your Trakt account and use it within Red Light</property>
+                          <property name="setting_description">Authorise your Trakt account and use it within Red Light</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=trakt.trakt_authenticate)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <property name="setting_label">Revoke Authorization</property>
+                          <property name="setting_label">Revoke Authorisation</property>
                           <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.trakt.user)]</property>
-                          <property name="setting_description">Revoke authorization of your Trakt account</property>
+                          <property name="setting_description">Revoke authorisation of your Trakt account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=trakt.trakt_revoke_authentication)</onclick>
                       </item>
                       <item>
@@ -1551,7 +1575,7 @@
                           <property name="setting_label">Lists Read Access Token</property>
                           <property name="setting_type">numeric</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb.lists_read_token)]</property>
-                          <property name="setting_description">Enter your TMDb v4 read access token (JWT). Used for TMDb Lists account authorization and API calls before you sign in with Authorize Account. Create one at themoviedb.org/settings/api with API Read Access permission.</property>
+                          <property name="setting_description">Enter your TMDb v4 read access token (JWT). Used for TMDb Lists account authorisation and API calls before you sign in with Authorise Account. Create one at themoviedb.org/settings/api with API Read Access permission.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_string&amp;setting_id=tmdb.lists_read_token)</onclick>
                       </item>
                       <item>
@@ -1575,19 +1599,19 @@
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.tmdb.token),empty_setting)</visible>
-                          <property name="setting_label">Authorize Account</property>
+                          <property name="setting_label">Authorise Account</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Authorize your TMDb account and use it within Red Light for Lists</property>
+                          <property name="setting_description">Authorise your TMDb account and use it within Red Light for Lists</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=tmdblist_api.authenticate)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.tmdb.token),empty_setting)</visible>
-                          <property name="setting_label">Revoke Account Authorization</property>
+                          <property name="setting_label">Revoke Account Authorisation</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb.username)]</property>
-                          <property name="setting_description">Revoke authorization of your TMDb account</property>
+                          <property name="setting_description">Revoke authorisation of your TMDb account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=tmdblist_api.revoke_authentication)</onclick>
                       </item>
         <!-- OMDb -->
@@ -1687,39 +1711,6 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.oc.token),empty_setting)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.oc.enabled),true)</visible>
-                          <property name="setting_label">Include uncached results (Offcloud)</property>
-                          <property name="setting_type">boolean</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external.include_uncached_offcloud)]</property>
-                          <property name="setting_description">When enabled, torrents not in Offcloud instant cache appear in the main results list (subject to minimum seeders). Default off shows cached Offcloud only. Selecting an uncached row adds it to your Offcloud cloud.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=external.include_uncached_offcloud)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(60)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rd.token),empty_setting)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.rd.enabled),true)</visible>
-                          <property name="setting_label">Check for Cached Results (RD)</property>
-                          <property name="setting_type">boolean</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external.cache_check)]</property>
-                          <property name="setting_description">When enabled, Red Light API-checks Real-Debrid cache status for external results (fewer RD rows, but those shown should be instant). Premiumize and AllDebrid are not API-checked by this setting — every hash is labelled cached for those providers. TorBox and Offcloud use their own Include uncached settings for API checks, not this toggle.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=external.cache_check)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(60)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.tb.enabled),true)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.tb.token),empty_setting)</visible>
-                          <property name="setting_label">Include uncached results (TorBox)</property>
-                          <property name="setting_type">boolean</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external.include_uncached_torbox)]</property>
-                          <property name="setting_description">When enabled, torrents not in TorBox shared cache appear in the main results list (subject to minimum seeders). Default off shows cached TorBox only. Selecting an uncached row adds it to your TorBox cloud.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=external.include_uncached_torbox)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(60)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.name),empty_setting)</visible>
                           <property name="setting_label">Open External Scraper Settings</property>
                           <property name="setting_type">action</property>
@@ -1738,10 +1729,10 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.ad.token),empty_setting)</visible>
-                          <property name="setting_label">Authorize</property>
+                          <property name="setting_label">Authorise</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Authorize your All Debrid account and use it within Red Light</property>
+                          <property name="setting_description">Authorise your All Debrid account and use it within Red Light</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=alldebrid.authenticate)</onclick>
                       </item>
                       <item>
@@ -1757,11 +1748,22 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.ad.token),empty_setting)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.ad.enabled),true)</visible>
-                          <property name="setting_label">Revoke Authorization</property>
+                          <property name="setting_label">Revoke Authorisation</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.ad.account_id)]</property>
-                          <property name="setting_description">Revoke authorization of your All Debrid account</property>
+                          <property name="setting_description">Revoke authorisation of your All Debrid account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=alldebrid.revoke_authentication)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.ad.token),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.ad.enabled),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">Check Cached Status (External Scrapers)</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.ad.cache_check)]</property>
+                          <property name="setting_description">When enabled, Red Light checks whether external torrent results are cached on your All Debrid account before listing them. You may see fewer links, but those shown should be instant.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=ad.cache_check)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
@@ -1878,7 +1880,7 @@
                           <property name="setting_label">Filter Results by Name</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.easynews.title_filter)]</property>
-                          <property name="setting_description">After EasyNews returns results, match filenames against the movie or episode title (and aliases). Uses exact title match before SxxExx (same as POV/Fen): short show names like Wings will not match Behind The Wings or Super Wings. EasyNews search is already narrow (e.g. Movie Year or Show S01E05); this step removes wrong hits from Broad search or similar titles. Disable if valid links go missing. Search Width does not replace this filter</property>
+                          <property name="setting_description">After EasyNews returns results, match filenames against the movie or episode title (and aliases). EasyNews search is already narrow (e.g. Movie Year or Show S01E05), so this often removes few extra results but helps when unrelated files slip through. Disable if valid links go missing. Search Width, Filter Languages, and Fallback Search Queries usually matter more for EasyNews</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=easynews.title_filter)</onclick>
                       </item>
                       <item>
@@ -1994,10 +1996,10 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.oc.token),empty_setting)</visible>
-                          <property name="setting_label">Authorize</property>
+                          <property name="setting_label">Authorise</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Authorize your Offcloud account with a QR code and use it within Red Light</property>
+                          <property name="setting_description">Authorise your Offcloud account with a QR code and use it within Red Light</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=offcloud.authenticate)</onclick>
                       </item>
                       <item>
@@ -2013,11 +2015,34 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.oc.token),empty_setting)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.oc.enabled),true)</visible>
-                          <property name="setting_label">Revoke Authorization</property>
+                          <property name="setting_label">Revoke Authorisation</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.oc.token)]</property>
-                          <property name="setting_description">Revoke authorization of your Offcloud account</property>
+                          <property name="setting_description">Revoke authorisation of your Offcloud account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=offcloud.revoke_authentication)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.oc.token),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.oc.enabled),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">Check Cached Status (External Scrapers)</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.oc.cache_check)]</property>
+                          <property name="setting_description">When enabled, Red Light checks whether external torrent results are cached on your Offcloud account before listing them. You may see fewer links, but those shown should be instant.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=oc.cache_check)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.oc.token),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.oc.enabled),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.oc.cache_check),true)</visible>
+                          <property name="setting_label">Include Uncached Results (External Scrapers)</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.oc.include_uncached)]</property>
+                          <property name="setting_description">When enabled, torrents not in Offcloud instant cache also appear in the main results list (subject to minimum seeders). Selecting an uncached row adds it to your Offcloud cloud.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=oc.include_uncached)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
@@ -2102,10 +2127,10 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.pm.token),empty_setting)</visible>
-                          <property name="setting_label">Authorize</property>
+                          <property name="setting_label">Authorise</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Authorize your Premiumize account and use it within Red Light</property>
+                          <property name="setting_description">Authorise your Premiumize account and use it within Red Light</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=premiumize.authenticate)</onclick>
                       </item>
                       <item>
@@ -2121,11 +2146,34 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.pm.token),empty_setting)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.pm.enabled),true)</visible>
-                          <property name="setting_label">Revoke Authorization</property>
+                          <property name="setting_label">Revoke Authorisation</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.pm.account_id)]</property>
-                          <property name="setting_description">Revoke authorization of your Premiumize account</property>
+                          <property name="setting_description">Revoke authorisation of your Premiumize account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=premiumize.revoke_authentication)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.pm.token),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.pm.enabled),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">Check Cached Status (External Scrapers)</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.pm.cache_check)]</property>
+                          <property name="setting_description">When enabled, Red Light checks whether external torrent results are cached on your Premiumize account before listing them. You may see fewer links, but those shown should be instant.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=pm.cache_check)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.pm.token),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.pm.enabled),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.pm.cache_check),true)</visible>
+                          <property name="setting_label">Include Uncached Results (External Scrapers)</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.pm.include_uncached)]</property>
+                          <property name="setting_description">When enabled, torrents not in Premiumize instant cache also appear in the main results list (subject to minimum seeders). Selecting an uncached row adds it to your Premiumize cloud.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=pm.include_uncached)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
@@ -2212,10 +2260,10 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.rd.token),empty_setting)</visible>
-                          <property name="setting_label">Authorize</property>
+                          <property name="setting_label">Authorise</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Authorize your Real Debrid account and use it within Red Light</property>
+                          <property name="setting_description">Authorise your Real Debrid account and use it within Red Light</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=real_debrid.authenticate)</onclick>
                       </item>
                       <item>
@@ -2231,11 +2279,22 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.rd.token),empty_setting)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.rd.enabled),true)</visible>
-                          <property name="setting_label">Revoke Authorization</property>
+                          <property name="setting_label">Revoke Authorisation</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.rd.account_id)]</property>
-                          <property name="setting_description">Revoke authorization of your Real Debrid account</property>
+                          <property name="setting_description">Revoke authorisation of your Real Debrid account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=real_debrid.revoke_authentication)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.rd.token),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.rd.enabled),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">Check Cached Status (External Scrapers)</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.rd.cache_check)]</property>
+                          <property name="setting_description">When enabled, Red Light checks whether external torrent results are cached on your Real Debrid account before listing them. You may see fewer links, but those shown should be instant.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=rd.cache_check)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
@@ -2342,10 +2401,10 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.tb.token),empty_setting)</visible>
-                          <property name="setting_label">Authorize</property>
+                          <property name="setting_label">Authorise</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Authorize your TorBox account with a QR code and use it within Red Light</property>
+                          <property name="setting_description">Authorise your TorBox account with a QR code and use it within Red Light</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=torbox.authenticate)</onclick>
                       </item>
                       <item>
@@ -2361,11 +2420,34 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.tb.token),empty_setting)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.tb.enabled),true)</visible>
-                          <property name="setting_label">Revoke Authorization</property>
+                          <property name="setting_label">Revoke Authorisation</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tb.token)]</property>
-                          <property name="setting_description">Revoke authorization of your TorBox account</property>
+                          <property name="setting_description">Revoke authorisation of your TorBox account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=torbox.revoke_authentication)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.tb.token),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.tb.enabled),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">Check Cached Status (External Scrapers)</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.tb.cache_check)]</property>
+                          <property name="setting_description">When enabled, Red Light checks whether external torrent results are cached on your TorBox account before listing them. You may see fewer links, but those shown should be instant.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tb.cache_check)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.tb.token),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.tb.enabled),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.tb.cache_check),true)</visible>
+                          <property name="setting_label">Include Uncached Results (External Scrapers)</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.tb.include_uncached)]</property>
+                          <property name="setting_description">When enabled, torrents not in TorBox shared cache also appear in the main results list (subject to minimum seeders). Selecting an uncached row adds it to your TorBox cloud.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tb.include_uncached)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
@@ -2384,7 +2466,7 @@
                           <property name="setting_label">Notify when added torrents are ready in Cloud</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tb.notify_cloud_ready)]</property>
-                          <property name="setting_description">Notify when a magnet you added to TorBox (uncached Add to Cloud, context menu, or kept via Store Resolved to Cloud) has finished and is available in Cloud Storage / History</property>
+                          <property name="setting_description">Notify when a torrent you added to TorBox (uncached Add to Cloud, or kept via Store Resolved to Cloud) has finished and is available in Cloud Storage / History</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tb.notify_cloud_ready)</onclick>
                       </item>
                       <item>
@@ -2402,10 +2484,10 @@
                           <visible>!String.IsEqual(Window(10000).Property(redlight.tb.token),empty_setting)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.tb.enabled),true)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.tb_cloud),true)</visible>
-                          <property name="setting_label">    - Filter Results by Name (Movies only)</property>
+                          <property name="setting_label">    - Filter Results by Name</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tb_cloud.title_filter)]</property>
-                          <property name="setting_description">Extra filename title matching for TorBox Cloud source search on movies only. TV episodes always use season/episode matching in the filename; this toggle does not change episode behaviour. May remove some valid movie links if names differ from the TMDB title</property>
+                          <property name="setting_description">Enable this and Red Light will perform extra name matching functions on your TorBox Cloud results. Will help to limit incorrect results, but may also filter some relevant results</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tb_cloud.title_filter)</onclick>
                       </item>
                       <item>
@@ -2677,10 +2759,10 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(70)</visible>
-                          <property name="setting_label">Choose Rescrape Actions</property>
+                          <property name="setting_label">Rescrape Actions</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Choose Off, Auto, or Prompt for each rescrape step. Most steps run in priority order when a search ends with no playable results (after filtering). "Offer Full Search After Early Results" only applies when sources already appeared on the results screen - it controls whether to search all scrapers (including torrent sites) from that list, not an empty-search retry.</property>
+                          <property name="setting_description">Configure automatic retries when a source search returns no playable results. Each action can be Off, Auto, or Prompt, with order from Highest to Lowest. Rescrape With No Cache Check disables per-provider external cache checks (Real Debrid, All Debrid, TorBox, Premiumize, Offcloud). Rescrape With Disabled External Providers includes disabled external torrent providers (not internal scrapers such as EasyNews or debrid cloud). Offer Full Search After Early Results applies to the empty-search retry path only; Check Before Full Search and Run External Scraper Search during prescrape are separate.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=rescrape_actions_choice)</onclick>
                       </item>
         <!-- Sorting and Filtering -->

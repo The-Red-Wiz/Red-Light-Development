@@ -15,6 +15,9 @@ class OffcloudAPI:
 	oauth_url = 'https://offcloud.com/oauth/'
 
 	def __init__(self):
+		self._sync_token()
+
+	def _sync_token(self):
 		self.token = get_setting('redlight.oc.token', 'empty_setting')
 
 	def _authorized(self):
@@ -25,6 +28,7 @@ class OffcloudAPI:
 		return {'Authorization': 'Bearer %s' % self.token}
 
 	def _request(self, method, path, params=None, json_data=None, data=None, timeout=20):
+		self._sync_token()
 		if not self._authorized(): return None
 		url = path if path.startswith('http') else '%s%s' % (self.base_url, path.lstrip('/'))
 		try:
@@ -50,7 +54,7 @@ class OffcloudAPI:
 
 	def _parse_cloud_response(self, result):
 		if not result or not isinstance(result, dict):
-			return False, 'Offcloud: No response from API (check authorization)'
+			return False, 'Offcloud: No response from API (check authorisation)'
 		not_available = result.get('not_available')
 		if not_available:
 			reasons = {
@@ -80,17 +84,17 @@ class OffcloudAPI:
 			response = oauth_session.post('%sdevice/code' % self.oauth_url, json={}, timeout=20)
 			payload = response.json()
 		except Exception:
-			return ok_dialog(text='Unable to start Offcloud authorization')
+			return ok_dialog(text='Unable to start Offcloud authorisation')
 		device_code = payload.get('device_code')
 		user_code = payload.get('user_code')
 		verify_url = payload.get('verification_uri_complete') or payload.get('verification_uri') or 'https://offcloud.com/activate'
 		if not device_code or not user_code:
-			return ok_dialog(text='Invalid Offcloud authorization response')
+			return ok_dialog(text='Invalid Offcloud authorisation response')
 		qr_code = make_qrcode(verify_url) or ''
 		copy2clip(verify_url)
 		p_dialog_insert = '[CR]Full link copied to clipboard[CR]OR visit: [B]offcloud.com/activate[/B][CR]AND Enter this Code: [B]%s[/B]' % user_code
 		content = 'Please Scan the QR Code%s[CR]' % p_dialog_insert
-		progress = progress_dialog('Offcloud Authorize', qr_code)
+		progress = progress_dialog('Offcloud Authorise', qr_code)
 		progress.update(content, 0)
 		expires_in = int(payload.get('expires_in') or 600)
 		poll_interval = int(payload.get('interval') or 5)
@@ -103,7 +107,7 @@ class OffcloudAPI:
 			if token_ttl <= 0:
 				try: progress.close()
 				except Exception: pass
-				return ok_dialog(text='Offcloud: Authorization timed out')
+				return ok_dialog(text='Offcloud: Authorisation timed out')
 			sleep(poll_interval * 1000)
 			token_ttl -= poll_interval
 			progress.update(content, int(100 * (expires_in - token_ttl) / float(expires_in)))
@@ -138,20 +142,36 @@ class OffcloudAPI:
 		username = info.get('user_id') or info.get('userId') or info.get('email') or ''
 		if username:
 			set_setting('oc.account_id', username)
-		notification('Offcloud successfully authorized', 3000)
+		self.clear_cache()
+		notification('Offcloud successfully authorised', 3000)
 		ok_dialog(text='Success')
+
+	def item_play_link(self, item):
+		url = item.get('url')
+		if url: return self.requote_uri(url)
+		server, request_id, file_name = item.get('server'), item.get('requestId', ''), item.get('fileName', '')
+		if server and request_id and file_name:
+			return self.requote_uri(self.build_url(server, request_id, file_name))
+		if request_id and not item.get('isDirectory'):
+			explore = self.torrent_info(request_id)
+			if isinstance(explore, list):
+				for link in explore:
+					if isinstance(link, str) and link:
+						return self.requote_uri(link)
+		return ''
 
 	def revoke(self):
 		set_setting('oc.token', 'empty_setting')
 		set_setting('oc.enabled', 'false')
 		set_setting('oc.account_id', 'empty_setting')
-		notification('Offcloud Authorization Reset', 3000)
+		notification('Offcloud Authorisation Reset', 3000)
 
 	def user_cloud(self):
 		return cache_object(self._get, 'oc_user_cloud', 'cloud/history', False, 0.03)
 
 	def user_cloud_check(self):
-		return self._get('cloud/history')
+		result = self._get('cloud/history')
+		return result if isinstance(result, list) else []
 
 	def user_cloud_info(self, request_id=''):
 		return cache_object(self._get, 'oc_user_cloud_%s' % request_id, 'cloud/explore/%s' % request_id, False, 0.03)
@@ -310,7 +330,8 @@ class OffcloudAPI:
 			if not torrent or torrent.get('status') != 'downloaded': return None
 			torrent_id = torrent['requestId']
 			torrent_files = self.torrent_info(torrent_id)
-			torrent_files = [{'link': self.requote_uri(item), 'filename': item.split('/')[-1], 'size': 0} for item in torrent_files if item.lower().endswith(tuple(extensions))]
+			torrent_files = [{'link': self.requote_uri(item), 'filename': item.split('/')[-1], 'size': 0, 'request_id': torrent_id}
+				for item in torrent_files if item.lower().endswith(tuple(extensions))]
 			return torrent_files or None
 		except Exception:
 			if torrent_id: self.delete_torrent(torrent_id)

@@ -7,11 +7,13 @@ from threading import Thread
 from urllib.request import Request, urlopen
 from urllib.parse import parse_qsl, urlparse, unquote
 from modules import kodi_utils
-from modules.sources import Sources
+from modules.sources import Sources, PROP_RESOLVE_CANCEL
 from modules.settings import download_directory, store_resolved_to_cloud
 from modules.source_utils import clean_title
 from modules.utils import clean_file_name, safe_string, remove_accents, normalize
 # logger = kodi_utils.logger
+
+NO_DOWNLOAD_URL_MSG = 'No URL found for Download. Pick another Source'
 
 def runner(params):
 	action = params.get('action')
@@ -39,20 +41,15 @@ def runner(params):
 		image = meta.get('poster') or kodi_utils.get_icon('box_office')
 		default_name = '%s (%s)' % (clean_file_name(get_title(meta)), get_year(meta))
 		default_foldername = kodi_utils.kodi_dialog().input('Title', defaultt=default_name)
-		if not default_foldername:
-			default_foldername = default_name
 		threads = []
 		threads_append = threads.append
-		meta_json = json.dumps(meta)
 		for item in chosen_list:
-			item['default_foldername'] = default_foldername
-			item['meta'] = meta_json
 			if show_package:
 				season = find_season_in_release_title(item['pack_files']['filename'])
 				if season:
-					item_meta = dict(meta)
-					item_meta['season'] = season
-					item['meta'] = json.dumps(item_meta)
+					meta['season'] = season
+					item['meta'] = json.dumps(meta)
+					item['default_foldername'] = default_foldername
 			threads_append(Thread(target=Downloader(item).run))
 		kodi_utils.notification('Multi File Pack Download Started...', 3500, image)
 		for thread in threads:
@@ -129,7 +126,7 @@ class Downloader:
 		kodi_utils.show_busy_dialog()
 		self.download_prep()
 		self.get_url_and_headers()
-		if self.url in (None, 'None', ''): return self.return_notification(_notification='No URL found for Download. Pick another Source')
+		if self.url in (None, 'None', ''): return self.return_notification(_notification=NO_DOWNLOAD_URL_MSG)
 		self.get_filename()
 		self.get_extension()
 		if not self.download_check():
@@ -139,22 +136,6 @@ class Downloader:
 		self.get_download_folder()
 		if not self.get_destination_folder(): return self.return_notification(_notification='Cancelled')
 		self.download_runner()
-
-	def _resolve_meta_for_source(self, source):
-		'''Use S/E parsed from the chosen release name when it differs from the search episode (e.g. S01E02 file while on S01E01).'''
-		if not self.meta or self.meta_get('media_type') != 'episode':
-			return self.meta
-		from modules.source_utils import parse_episode_from_filename, find_season_in_release_title
-		resolve_meta = dict(self.meta)
-		label = source.get('display_name') or source.get('name') or ''
-		normalized = normalize(label)
-		parsed_season = find_season_in_release_title(normalized)
-		if parsed_season is not None:
-			resolve_meta['season'] = parsed_season
-		parsed_episode = parse_episode_from_filename(normalized, resolve_meta.get('season'))
-		if parsed_episode is not None:
-			resolve_meta['episode'] = parsed_episode
-		return resolve_meta
 
 	def download_prep(self):
 		if 'meta' in self.params:
@@ -217,8 +198,8 @@ class Downloader:
 				try:
 					source = json.loads(self.source)
 					if source.get('scrape_provider', '') == 'easynews': source['url_dl'] = source['down_url']
-					resolve_meta = self._resolve_meta_for_source(source)
-					url = Sources().resolve_sources(source, meta=resolve_meta)
+					kodi_utils.clear_property(PROP_RESOLVE_CANCEL)
+					url = Sources().resolve_sources(source, meta=self.meta)
 					if 'torbox' in url:
 						from apis.torbox_api import TorBoxAPI
 						url = TorBoxAPI().add_headers_to_url(url)
@@ -305,12 +286,8 @@ class Downloader:
 			self.final_destination = self.down_folder
 		elif self.action in ('meta.single', 'meta.pack'):
 			default_name = '%s (%s)' % (self.title, self.year)
-			if self.action == 'meta.single':
-				folder_rootname = kodi_utils.kodi_dialog().input('Title', defaultt=default_name)
-				if not folder_rootname:
-					folder_rootname = default_name
-			else:
-				folder_rootname = self.params_get('default_foldername') or default_name
+			if self.action == 'meta.single': folder_rootname = kodi_utils.kodi_dialog().input('Title', defaultt=default_name)
+			else: folder_rootname = self.params_get('default_foldername', default_name)
 			if not folder_rootname: return False
 			if self.media_type == 'episode':
 				inter = os.path.join(self.down_folder, folder_rootname)

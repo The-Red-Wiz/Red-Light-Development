@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from caches.settings_cache import get_setting, set_setting, default_setting_values, _EXTRAS_LIST_DEFAULT
-from modules.kodi_utils import translate_path, get_property
+from modules.kodi_utils import translate_path, get_property, addon_profile
 from modules.kodi_utils import logger
 
 def tmdb_api_key():
@@ -16,16 +16,21 @@ def trakt_secret():
 	return get_setting('redlight.trakt.secret', '')
 
 def trakt_user_active():
-	return get_setting('redlight.trakt.user', 'empty_setting') not in (None, 'empty_setting', '')
+	from caches.settings_cache import settings_cache
+	val = settings_cache.read_db_value('trakt.user')
+	return val not in (None, 'empty_setting', '')
 
 def simkl_user_active():
-	return get_setting('redlight.simkl.user', 'empty_setting') not in (None, 'empty_setting', '') \
-		and get_setting('redlight.simkl.token', '0') not in (None, '0', '', 'empty_setting')
+	from caches.settings_cache import settings_cache
+	user = settings_cache.read_db_value('simkl.user')
+	token = settings_cache.read_db_value('simkl.token')
+	return user not in (None, 'empty_setting', '') and token not in (None, '0', '', 'empty_setting')
 
 def simkl_sync_interval():
 	setting = get_setting('redlight.simkl.sync_interval', '60')
-	interval = int(setting) * 60
-	return setting, interval
+	try: interval = max(5, int(setting))
+	except: interval = 60
+	return interval, interval * 60
 
 def tmdblist_user_active():
 	return get_setting('redlight.tmdb.account_id', 'empty_setting') not in (None, 'empty_setting', '')
@@ -71,6 +76,12 @@ def download_directory(media_type):
 								'image_url': 'redlight.image_download_directory','image': 'redlight.image_download_directory', 'premium': 'redlight.premium_download_directory',
 								None: 'redlight.premium_download_directory', 'None': False}
 	return translate_path(get_setting(download_directories_dict[media_type]))
+
+def import_export_directory():
+	path = get_setting('redlight.import_export_directory', '')
+	if path in ('', 'None', None):
+		return translate_path(addon_profile())
+	return translate_path(path)
 
 def ai_model_active():
 	if get_setting('redlight.google_api', 'empty_setting') not in (None, 'None', '', 'empty_setting'): return True
@@ -299,10 +310,17 @@ def tv_progress_location():
 
 def check_prescrape_sources(scraper, media_type):
 	if scraper in ('easynews', 'aiostreams', 'rd_cloud', 'pm_cloud', 'ad_cloud', 'oc_cloud', 'tb_cloud', 'folders'):
-		return get_setting('redlight.check.%s' % scraper) == 'true'
+		if get_setting('redlight.check.%s' % scraper) == 'true': return True
+		if scraper in ('rd_cloud', 'pm_cloud', 'ad_cloud', 'oc_cloud', 'tb_cloud') and autoplay_prescrape(scraper): return True
+		return False
 	if get_setting('redlight.check.%s' % scraper) == 'true' and auto_play(media_type):
 		return True
 	return False
+
+def prescrape_enabled(media_type, active_scrapers=None):
+	if active_scrapers is None:
+		active_scrapers = active_internal_scrapers()
+	return any(check_prescrape_sources(scraper, media_type) for scraper in active_scrapers)
 
 def cloud_scrape_before_external(scraper):
 	"""Run debrid cloud scrapers before external torrent scrapers when the provider is enabled."""
@@ -329,11 +347,33 @@ def filter_by_name(scraper):
 def uncached_min_seeders():
 	return int(get_setting('redlight.results.uncached_min_seeders', '0'))
 
+_DEBRID_CACHE_CHECK_SETTINGS = {
+	'Real-Debrid': 'rd.cache_check',
+	'TorBox': 'tb.cache_check',
+	'Premiumize.me': 'pm.cache_check',
+	'Offcloud': 'oc.cache_check',
+	'AllDebrid': 'ad.cache_check',
+}
+
+def debrid_cache_check(provider):
+	setting_id = _DEBRID_CACHE_CHECK_SETTINGS.get(provider)
+	if not setting_id: return False
+	return get_setting('redlight.%s' % setting_id, 'false') == 'true'
+
+def any_external_cache_check():
+	for slug, provider in (('rd', 'Real-Debrid'), ('tb', 'TorBox'), ('pm', 'Premiumize.me'), ('oc', 'Offcloud'), ('ad', 'AllDebrid')):
+		if enabled_debrids_check(slug) and debrid_cache_check(provider):
+			return True
+	return False
+
 def include_uncached_torbox():
-	return get_setting('redlight.external.include_uncached_torbox', 'false') == 'true'
+	return get_setting('redlight.tb.include_uncached', 'false') == 'true' and debrid_cache_check('TorBox')
 
 def include_uncached_offcloud():
-	return get_setting('redlight.external.include_uncached_offcloud', 'false') == 'true'
+	return get_setting('redlight.oc.include_uncached', 'false') == 'true' and debrid_cache_check('Offcloud')
+
+def include_uncached_premiumize():
+	return get_setting('redlight.pm.include_uncached', 'false') == 'true' and debrid_cache_check('Premiumize.me')
 
 def tb_notify_cloud_ready():
 	return get_setting('redlight.tb.notify_cloud_ready', 'true') == 'true'
@@ -435,7 +475,7 @@ def scraping_settings():
 			'4k': highlight_4K, '1080p': highlight_1080P, '720p': highlight_720P, 'sd': highlight_SD}
 
 def external_cache_check():
-	return get_setting('redlight.external.cache_check') == 'true'
+	return any_external_cache_check()
 
 def omdb_api_key():
 	return get_setting('redlight.omdb_api', 'empty_setting')
@@ -456,6 +496,9 @@ def mpaa_region():
 def widget_hide_next_page():
 	return get_setting('redlight.widget_hide_next_page', 'false') == 'true'
 
+def widget_hide_watched():
+	return get_setting('redlight.widget_hide_watched', 'false') == 'true'
+
 def calendar_sort_order():
 	return int(get_setting('redlight.trakt.calendar_sort_order', '0'))
 
@@ -471,36 +514,37 @@ def date_offset():
 def media_open_action(media_type):
 	return int(get_setting('redlight.media_open_action_%s' % media_type, '0'))
 
-def _resolve_provider_setting(setting_id):
-	ind = int(get_setting('redlight.%s' % setting_id, '0'))
+def _resolve_watched_provider():
+	ind = int(get_setting('redlight.watched_indicators', '0'))
 	if ind == 1 and not trakt_user_active(): return 0
 	if ind == 2 and not simkl_user_active(): return 0
 	return ind
 
+def watched_provider_options():
+	options = {'0': 'Red Light'}
+	if simkl_user_active(): options['2'] = 'Simkl'
+	if trakt_user_active(): options['1'] = 'Trakt'
+	return options
+
+def offer_watched_provider(provider_index, name):
+	from modules.kodi_utils import confirm_dialog
+	if confirm_dialog(heading='Watched Status Provider', text='Do you want to set %s as your Watched Status Provider?' % name,
+						ok_label='Yes', cancel_label='No', default_control=10):
+		set_setting('watched_indicators', str(provider_index))
+
+def fallback_watched_provider_on_revoke(revoked_index):
+	current = int(get_setting('redlight.watched_indicators', '0'))
+	if current != revoked_index: return
+	if revoked_index == 1:
+		set_setting('watched_indicators', '2' if simkl_user_active() else '0')
+	elif revoked_index == 2:
+		set_setting('watched_indicators', '1' if trakt_user_active() else '0')
+
 def watched_indicators():
-	return _resolve_provider_setting('watched_indicators')
+	return _resolve_watched_provider()
 
-def sync_indicators():
-	return _resolve_provider_setting('sync_indicators')
-
-def playback_progress_provider():
-	"""Stored Playback & Progress Provider; never silently downgrade to Red Light local."""
-	return int(get_setting('redlight.sync_indicators', '0'))
-
-def migrate_sync_indicators_for_upgrade(had_existing_settings):
-	"""One-time: Playback & Progress Provider follows pre-split watched_indicators."""
-	if get_setting('redlight.sync_indicators_playback_reconciled', 'false') != 'true':
-		set_setting('sync_indicators_playback_reconciled', 'true')
-		sync_val = get_setting('redlight.sync_indicators', '0')
-		watched_val = get_setting('redlight.watched_indicators', '0')
-		if sync_val == '0' and watched_val in ('1', '2'):
-			set_setting('sync_indicators', watched_val)
-			return True
-	if get_setting('redlight.sync_indicators_migrated', 'false') == 'true': return False
-	set_setting('sync_indicators_migrated', 'true')
-	if not had_existing_settings: return False
-	set_setting('sync_indicators', get_setting('redlight.watched_indicators', '0'))
-	return True
+def most_watched_provider():
+	return 'simkl' if watched_indicators() == 2 else 'trakt'
 
 def flatten_episodes():
 	return get_setting('redlight.trakt.flatten_episodes', 'false') == 'true'
@@ -551,8 +595,12 @@ def rescrape_settings():
 def rescrape_action_value(action, default='0'):
 	return int(get_setting('redlight.rescrape.%s' % action, default))
 
-_CM_ORDER_DEFAULT = 'extras,options,playback_options,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
-	'simkl_manager,trakt_manager,personal_manager,tmdb_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'
+def cm_enabled():
+	default = 'extras,options,playback_options,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
+				'simkl_manager,trakt_manager,tmdb_manager,personal_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'
+	setting = get_setting('redlight.context_menu.enabled', default)
+	if setting in ('', None, 'noop', '[]'): return default.split(',')
+	return setting.split(',')
 
 def _merge_cm_order_with_enabled(order, enabled):
 	order = [i for i in order if i]
@@ -564,8 +612,17 @@ def _merge_cm_order_with_enabled(order, enabled):
 			order.append(item)
 	return order
 
+def _normalize_cm_list_order(order):
+	order = list(order)
+	if 'simkl_manager' in order and 'trakt_manager' in order:
+		si, ti = order.index('simkl_manager'), order.index('trakt_manager')
+		if ti < si: order[si], order[ti] = order[ti], order[si]
+	if 'tmdb_manager' in order and 'personal_manager' in order:
+		ti, pi = order.index('tmdb_manager'), order.index('personal_manager')
+		if pi < ti: order[ti], order[pi] = order[pi], order[ti]
+	return order
+
 def migrate_simkl_context_menu_for_upgrade(had_existing_settings):
-	"""One-time: enable Simkl Manager in context menu for users upgrading from pre-Simkl builds."""
 	if get_setting('redlight.simkl.cm_menu_migrated', 'false') == 'true': return False
 	set_setting('simkl.cm_menu_migrated', 'true')
 	if not had_existing_settings: return False
@@ -584,17 +641,21 @@ def migrate_simkl_context_menu_for_upgrade(had_existing_settings):
 			changed = True
 	return changed
 
-def cm_enabled():
-	setting = get_setting('redlight.context_menu.enabled', _CM_ORDER_DEFAULT)
-	if setting in ('', None, 'noop', '[]'): return _CM_ORDER_DEFAULT.split(',')
-	return [p for p in setting.split(',') if p]
+def migrate_cm_manager_order_for_upgrade():
+	if get_setting('redlight.cm_manager_order_migrated', 'false') == 'true': return False
+	set_setting('cm_manager_order_migrated', 'true')
+	before = get_setting('redlight.context_menu.order', '')
+	cm_current_order()
+	return get_setting('redlight.context_menu.order', '') != before
 
 def cm_current_order():
-	setting = get_setting('redlight.context_menu.order', _CM_ORDER_DEFAULT)
-	if setting in ('', None, 'noop', '[]'): order = _CM_ORDER_DEFAULT.split(',')
-	else: order = [p for p in setting.split(',') if p]
+	default = 'extras,options,playback_options,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
+				'simkl_manager,trakt_manager,tmdb_manager,personal_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'
+	setting = get_setting('redlight.context_menu.order', default)
+	if setting in ('', None, 'noop', '[]'): order = default.split(',')
+	else: order = setting.split(',')
 	enabled = cm_enabled()
-	merged = _merge_cm_order_with_enabled(order, enabled)
+	merged = _normalize_cm_list_order(_merge_cm_order_with_enabled(order, enabled))
 	if merged != order: set_setting('context_menu.order', ','.join(merged))
 	return merged
 
