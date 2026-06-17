@@ -119,7 +119,32 @@ def trakt_get_device_code():
 	CLIENT_ID = settings.trakt_client()
 	if CLIENT_ID in (None, 'empty_setting', ''): return no_client_key()
 	data = {'client_id': CLIENT_ID}
-	return call_trakt('oauth/device/code', data=data, with_auth=False)
+	result = call_trakt('oauth/device/code', data=data, with_auth=False)
+	if result: return result
+	_, message = trakt_test_credentials()
+	kodi_utils.ok_dialog(heading='Trakt Authorise', text=message)
+	return None
+
+def trakt_test_credentials():
+	CLIENT_ID = settings.trakt_client()
+	if CLIENT_ID in (None, 'empty_setting', ''):
+		return False, 'Trakt Client ID Key is not set.'
+	CLIENT_SECRET = settings.trakt_secret()
+	if CLIENT_SECRET in (None, 'empty_setting', ''):
+		return False, 'Trakt Client Secret Key is not set.'
+	try:
+		headers = {'Content-Type': 'application/json', 'trakt-api-version': '2', 'trakt-api-key': CLIENT_ID}
+		response = requests.post('https://api.trakt.tv/oauth/device/code', json={'client_id': CLIENT_ID}, headers=headers, timeout=15)
+		if response.status_code == 200:
+			return True, 'Trakt client keys are valid.'
+		try:
+			payload = response.json()
+			detail = payload.get('error_description') or payload.get('error') or ''
+		except: detail = ''
+		if not detail: detail = (response.text or '').strip() or 'No details returned.'
+		return False, 'Trakt client keys failed.[CR]Trakt rejected the client ID (HTTP %s).[CR]%s' % (response.status_code, detail)
+	except Exception as e:
+		return False, 'Trakt client keys failed.[CR]Could not reach Trakt: %s' % str(e)
 
 def trakt_get_device_token(device_codes):
 	API_ENDPOINT = 'https://api.trakt.tv/%s'
@@ -394,11 +419,7 @@ def trakt_watchlist_lists(media_type, list_type=None):
 
 def trakt_collection(media_type, dummy_arg):
 	data = trakt_fetch_collection_watchlist('collection', media_type)
-	sort_order = settings.lists_sort_order('collection')
-	if sort_order == 0: data = sort_for_article(data, 'title', settings.ignore_articles())
-	elif sort_order == 1: data.sort(key=lambda k: k['collected_at'], reverse=True)
-	else: data.sort(key=lambda k: k['released'], reverse=True)
-	return data
+	return settings.sort_trakt_sync_list(data, 'collection')
 
 def trakt_watchlist(media_type, dummy_arg):
 	data = trakt_fetch_collection_watchlist('watchlist', media_type)
@@ -406,10 +427,7 @@ def trakt_watchlist(media_type, dummy_arg):
 		current_date = get_datetime()
 		str_format = '%Y-%m-%d' if media_type in ('movie', 'movies') else '%Y-%m-%dT%H:%M:%S.%fZ'
 		data = [i for i in data if i.get('released', None) and js2date(i.get('released'), str_format, remove_time=True) <= current_date]
-	sort_order = settings.lists_sort_order('watchlist')
-	if sort_order == 0: data = sort_for_article(data, 'title', settings.ignore_articles())
-	elif sort_order == 1: data.sort(key=lambda k: k['collected_at'], reverse=True)
-	else: data.sort(key=lambda k: k.get('released'), reverse=True)
+	data = settings.sort_trakt_sync_list(data, 'watchlist')
 	return data
 
 def trakt_fetch_collection_watchlist(list_type, media_type):

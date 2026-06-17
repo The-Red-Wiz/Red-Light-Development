@@ -62,7 +62,8 @@ class TVShows:
 				var_module, import_function = 'modules.most_watched', normalize_most_watched_action(self.action)
 			else: var_module, import_function = 'apis.%s_api' % self.action.split('_')[0], self.action
 			try: function = manual_function_import(var_module, import_function)
-			except: pass
+			except: function = None
+			if self.action and self.action.startswith('simkl_') and function is None: return
 			if self.action in self.main:
 				data = function(page_no)
 				results = data['results']
@@ -165,7 +166,8 @@ class TVShows:
 		except: pass
 		kodi_utils.set_content(handle, 'tvshows')
 		kodi_utils.set_category(handle, self.category_name)
-		kodi_utils.end_directory(handle, cacheToDisc=False if self.is_external else True)
+		kodi_utils.end_directory(handle, updateListing=True if self.action in self.simkl_personal else False,
+			cacheToDisc=False if (self.is_external or self.action in self.simkl_personal) else True)
 		if not self.is_external:
 			if self.params_get('refreshed') == 'true': kodi_utils.sleep(1000)
 			kodi_utils.set_view_mode('view.tvshows', 'tvshows', self.is_external)

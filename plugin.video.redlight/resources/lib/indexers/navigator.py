@@ -108,16 +108,16 @@ class Navigator:
 		self.add({'mode': 'favorite_people', 'isFolder': 'false', 'name': 'People'}, 'People', 'empty_person')
 		self.end_directory()
 
-	def my_content(self):
-		if s.simkl_user_active(): self.add({'mode': 'navigator.simkl_lists'}, 'Simkl Lists', 'simkl')
-		if s.trakt_user_active(): self.add({'mode': 'navigator.trakt_lists_personal'}, 'Trakt Lists', 'trakt')
-		self.add({'mode': 'navigator.trakt_lists_public'}, 'Trakt Public Lists', 'trakt')
-		if s.tmdblist_user_active(): self.add({'mode': 'navigator.tmdb_lists_personal'}, 'TMDb Lists', 'tmdb')
-		# if s.tmdblist_user_active(): self.add({'mode': 'tmdblist.get_tmdb_lists'}, 'TMDb Lists', 'tmdb')
-		self.add({'mode': 'personal_lists.get_personal_lists'}, 'Personal Lists', 'lists')
-		self.add({'mode': 'navigator.discover_contents', 'media_type': 'movie', 'show_new': 'false'}, 'Discover Lists (Movies)', 'movies')
-		self.add({'mode': 'navigator.discover_contents', 'media_type': 'tvshow', 'show_new': 'false'}, 'Discover Lists (TV Shows)', 'tv')
-		self.end_directory()
+	def my_lists(self):
+		if s.simkl_user_active():
+			self._safe_add(self._simkl_lists_menu(), 'Simkl Lists', 'simkl')
+		if s.trakt_user_active(): self._safe_add({'mode': 'navigator.trakt_lists_personal'}, 'Trakt Lists', 'trakt')
+		self._safe_add({'mode': 'navigator.trakt_lists_public'}, 'Trakt Public Lists', 'trakt')
+		if s.tmdblist_user_active(): self._safe_add({'mode': 'navigator.tmdb_lists_personal'}, 'TMDb Lists', 'tmdb')
+		self._safe_add({'mode': 'personal_lists.get_personal_lists'}, 'Personal Lists', 'lists')
+		self._safe_add({'mode': 'navigator.discover_contents', 'media_type': 'movie', 'show_new': 'false'}, 'Discover Lists (Movies)', 'movies')
+		self._safe_add({'mode': 'navigator.discover_contents', 'media_type': 'tvshow', 'show_new': 'false'}, 'Discover Lists (TV Shows)', 'tv')
+		self.end_directory(cache_to_disc=False)
 
 	def tmdb_lists_personal(self):
 		self.add({'mode': 'navigator.tmdb_watchlists'}, 'Watchlist', 'tmdb')
@@ -152,6 +152,7 @@ class Navigator:
 		self.add({'mode': 'navigator.trakt_favorites', 'category_name': 'Favorites'}, 'Favorites', 'trakt')
 		self.add({'mode': 'navigator.trakt_recommendations', 'category_name': 'Recommended'}, 'Recommended', 'trakt')
 		self.add({'mode': 'build_my_calendar'}, 'Calendar', 'trakt')
+		if s.trakt_user_active(): self.add({'mode': 'navigator.search_history', 'action': 'trakt_my_lists'}, 'Search My Trakt Lists', 'search')
 		self.end_directory()
 
 	def trakt_lists_public(self):
@@ -173,18 +174,60 @@ class Navigator:
 		if s.simkl_user_active(): self.add({'mode': 'navigator.build_random_lists', 'menu_type': 'simkl_lists'}, 'Random Simkl Lists', 'simkl')
 		self.end_directory()
 
+	def _simkl_lists_menu(self):
+		return {'mode': 'navigator.simkl_lists'}
+
+	def _simkl_list_link(self, list_mode, action, category_name):
+		return {'mode': list_mode, 'action': action, 'category_name': category_name, 'refreshed': 'true'}
+
 	def simkl_lists(self):
-		self.add({'mode': 'build_movie_list', 'action': 'simkl_plantowatch', 'category_name': 'Movies Plan to Watch'}, 'Movies Plan to Watch', 'simkl')
-		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_plantowatch', 'category_name': 'TV Shows Plan to Watch'}, 'TV Shows Plan to Watch', 'simkl')
-		self.add({'mode': 'build_movie_list', 'action': 'simkl_watching', 'category_name': 'Movies Watching'}, 'Movies Watching', 'simkl')
-		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_watching', 'category_name': 'TV Shows Watching'}, 'TV Shows Watching', 'simkl')
-		self.add({'mode': 'build_movie_list', 'action': 'simkl_completed', 'category_name': 'Movies Completed'}, 'Movies Completed', 'simkl')
-		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_completed', 'category_name': 'TV Shows Completed'}, 'TV Shows Completed', 'simkl')
-		self.add({'mode': 'build_movie_list', 'action': 'simkl_hold', 'category_name': 'Movies On Hold'}, 'Movies On Hold', 'simkl')
-		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_hold', 'category_name': 'TV Shows On Hold'}, 'TV Shows On Hold', 'simkl')
-		self.add({'mode': 'build_movie_list', 'action': 'simkl_dropped', 'category_name': 'Movies Dropped'}, 'Movies Dropped', 'simkl')
-		self.add({'mode': 'build_tvshow_list', 'action': 'simkl_dropped', 'category_name': 'TV Shows Dropped'}, 'TV Shows Dropped', 'simkl')
-		self.end_directory()
+		"""Flat status lists (v1.3.4 layout) — direct links to each Movies/TV list."""
+		self.category_name = 'Simkl Lists'
+		for url_params, label in (
+			(self._simkl_list_link('build_movie_list', 'simkl_plantowatch', 'Movies Plan to Watch'), 'Movies Plan to Watch'),
+			(self._simkl_list_link('build_tvshow_list', 'simkl_plantowatch', 'TV Shows Plan to Watch'), 'TV Shows Plan to Watch'),
+			(self._simkl_list_link('build_movie_list', 'simkl_watching', 'Movies Watching'), 'Movies Watching'),
+			(self._simkl_list_link('build_tvshow_list', 'simkl_watching', 'TV Shows Watching'), 'TV Shows Watching'),
+			(self._simkl_list_link('build_movie_list', 'simkl_completed', 'Movies Completed'), 'Movies Completed'),
+			(self._simkl_list_link('build_tvshow_list', 'simkl_completed', 'TV Shows Completed'), 'TV Shows Completed'),
+			(self._simkl_list_link('build_movie_list', 'simkl_hold', 'Movies On Hold'), 'Movies On Hold'),
+			(self._simkl_list_link('build_tvshow_list', 'simkl_hold', 'TV Shows On Hold'), 'TV Shows On Hold'),
+			(self._simkl_list_link('build_movie_list', 'simkl_dropped', 'Movies Dropped'), 'Movies Dropped'),
+			(self._simkl_list_link('build_tvshow_list', 'simkl_dropped', 'TV Shows Dropped'), 'TV Shows Dropped'),
+		):
+			self._safe_add(url_params, label, 'simkl')
+		self._safe_add({'mode': 'navigator.search_history', 'action': 'simkl_lists'}, 'Search My Simkl Lists', 'search')
+		self.end_directory(cache_to_disc=False)
+
+	def simkl_watchlists(self):
+		self.category_name = 'Plan to Watch'
+		self._safe_add(self._simkl_list_link('build_movie_list', 'simkl_plantowatch', 'Movies Plan to Watch'), 'Movies', 'simkl')
+		self._safe_add(self._simkl_list_link('build_tvshow_list', 'simkl_plantowatch', 'TV Shows Plan to Watch'), 'TV Shows', 'simkl')
+		self.end_directory(cache_to_disc=False)
+
+	def simkl_completed(self):
+		self.category_name = 'Completed'
+		self._safe_add(self._simkl_list_link('build_movie_list', 'simkl_completed', 'Movies Completed'), 'Movies', 'simkl')
+		self._safe_add(self._simkl_list_link('build_tvshow_list', 'simkl_completed', 'TV Shows Completed'), 'TV Shows', 'simkl')
+		self.end_directory(cache_to_disc=False)
+
+	def simkl_watching(self):
+		self.category_name = 'Watching'
+		self._safe_add(self._simkl_list_link('build_movie_list', 'simkl_watching', 'Movies Watching'), 'Movies', 'simkl')
+		self._safe_add(self._simkl_list_link('build_tvshow_list', 'simkl_watching', 'TV Shows Watching'), 'TV Shows', 'simkl')
+		self.end_directory(cache_to_disc=False)
+
+	def simkl_hold(self):
+		self.category_name = 'On Hold'
+		self._safe_add(self._simkl_list_link('build_movie_list', 'simkl_hold', 'Movies On Hold'), 'Movies', 'simkl')
+		self._safe_add(self._simkl_list_link('build_tvshow_list', 'simkl_hold', 'TV Shows On Hold'), 'TV Shows', 'simkl')
+		self.end_directory(cache_to_disc=False)
+
+	def simkl_dropped(self):
+		self.category_name = 'Dropped'
+		self._safe_add(self._simkl_list_link('build_movie_list', 'simkl_dropped', 'Movies Dropped'), 'Movies', 'simkl')
+		self._safe_add(self._simkl_list_link('build_tvshow_list', 'simkl_dropped', 'TV Shows Dropped'), 'TV Shows', 'simkl')
+		self.end_directory(cache_to_disc=False)
 
 	def trakt_collections(self):
 		self.category_name = 'Collection'
@@ -420,7 +463,9 @@ class Navigator:
 		'tmdb_keyword_tvshow': ('keyword_tmdb_tvshow_queries', {'mode': 'search.get_key_id', 'search_type': 'tmdb_keyword', 'media_type': 'tvshow', 'isFolder': 'false'}),
 		'easynews_video': ('easynews_video_queries', {'mode': 'search.get_key_id', 'search_type': 'easynews_video', 'isFolder': 'false'}),
 		'easynews_image': ('easynews_image_queries', {'mode': 'search.get_key_id', 'search_type': 'easynews_image', 'isFolder': 'false'}),
-		'trakt_lists': ('trakt_list_queries', {'mode': 'search.get_key_id', 'search_type': 'trakt_lists', 'isFolder': 'false'})}
+		'trakt_lists': ('trakt_list_queries', {'mode': 'search.get_key_id', 'search_type': 'trakt_lists', 'isFolder': 'false'}),
+		'trakt_my_lists': ('trakt_my_list_queries', {'mode': 'search.get_key_id', 'search_type': 'trakt_my_lists', 'isFolder': 'false'}),
+		'simkl_lists': ('simkl_list_queries', {'mode': 'search.get_key_id', 'search_type': 'simkl_lists', 'isFolder': 'false'})}
 		setting_id, action_dict = search_mode_dict[self.list_name]
 		url_params = dict(action_dict)
 		data = main_cache.get(setting_id) or []
@@ -599,12 +644,16 @@ class Navigator:
 		for item in func: self.add(item, item['name'], item['iconImage'])
 		self.end_directory()
 
+	def _safe_add(self, url_params, list_name, iconImage='folder', original_image=False, cm_items=[]):
+		try: self.add(url_params, list_name, iconImage, original_image, cm_items)
+		except Exception as e: k.logger('Red Light', 'my_lists add failed [%s]: %s' % (list_name, e))
+
 	def add(self, url_params, list_name, iconImage='folder', original_image=False, cm_items=[]):
 		isFolder = url_params.get('isFolder', 'true') == 'true'
 		try:
 			if original_image: icon = iconImage
 			else: icon = k.resolve_list_icon(iconImage)
-		except: pass
+		except: icon = k.get_icon('folder')
 		url_params['iconImage'] = icon
 		url = self.build_url(url_params)
 		listitem = self.make_listitem()
@@ -621,9 +670,9 @@ class Navigator:
 			listitem.addContextMenuItems(cm_items)
 		self.add_item(int(sys.argv[1]), url, listitem, isFolder)
 
-	def end_directory(self):
+	def end_directory(self, cache_to_disc=True, update_listing=False):
 		handle = int(sys.argv[1])
 		k.set_content(handle, '')
 		k.set_category(handle, self.category_name)
-		k.end_directory(handle)
+		k.end_directory(handle, updateListing=update_listing, cacheToDisc=cache_to_disc)
 		k.set_view_mode('view.main', '')

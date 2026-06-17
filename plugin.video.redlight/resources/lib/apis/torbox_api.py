@@ -792,11 +792,11 @@ class TorBoxAPI:
 			r = self.account_info()
 			if not r or not r.get('success'): raise Exception('invalid account')
 			set_setting('tb.enabled', 'true')
-			ok_dialog(text='Success')
+			ok_dialog(heading='TorBox', text='Account authorised.')
 		except Exception:
 			set_setting('tb.token', 'empty_setting')
 			set_setting('tb.enabled', 'false')
-			ok_dialog(text='An Error Occurred')
+			ok_dialog(heading='TorBox', text='Authorisation failed.')
 
 	def revoke(self):
 		if not confirm_dialog(): return

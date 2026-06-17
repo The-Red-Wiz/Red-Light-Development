@@ -21,9 +21,6 @@ class SourcesResults(BaseDialog):
 		self.info_highlights_dict = kwargs.get('scraper_settings')
 		self.episode_group_label = kwargs.get('episode_group_label', '')
 		self.prescrape = kwargs.get('prescrape')
-		self.prescrape_empty_notice = kwargs.get('prescrape_empty_notice', False)
-		self.prescrape_empty_notice_main = kwargs.get('prescrape_empty_notice_main', '')
-		self.prescrape_empty_notice_sub = kwargs.get('prescrape_empty_notice_sub', '')
 		self.meta = kwargs.get('meta')
 		self.sources_ref = kwargs.get('sources_ref')
 		self.filters_ignored = kwargs.get('filters_ignored', False)
@@ -205,7 +202,7 @@ class SourcesResults(BaseDialog):
 					if 'Uncached' in item['cache_provider']:
 						if 'seeders' in item: set_properties({'source_type': 'UNCACHED (%d SEEDERS)' % get('seeders', 0)})
 						else: set_properties({'source_type': 'UNCACHED'})
-						set_properties({'highlight': 'FF7C7C7C'})
+						item_highlight = 'FF7C7C7C'
 					else:
 						provider_check_names = {'REAL-DEBRID': 'Real-Debrid', 'ALLDEBRID': 'AllDebrid', 'TORBOX': 'TorBox', 'PREMIUMIZE': 'Premiumize.me', 'OFFCLOUD': 'Offcloud'}
 						check_provider = provider_check_names.get(provider)
@@ -214,7 +211,7 @@ class SourcesResults(BaseDialog):
 						else: cache_flag = '[B]CACHED[/B]'
 						if highlight_type == 0: key = provider_lower
 						else: key = basic_quality
-						set_properties({'highlight': self.info_highlights_dict[key]})
+						item_highlight = self.info_highlights_dict[key]
 						if pack: set_properties({'source_type': '%s [B]PACK[/B]' % cache_flag})
 						else: set_properties({'source_type': '%s' % cache_flag})
 					set_properties({'provider': provider})
@@ -223,9 +220,11 @@ class SourcesResults(BaseDialog):
 					provider, provider_icon = self.get_provider_and_path(source.lower())
 					if highlight_type == 0: key = provider
 					else: key = basic_quality
-					set_properties({'highlight': self.info_highlights_dict[key], 'source_type': 'DIRECT', 'provider': provider.upper()})
+					item_highlight = self.info_highlights_dict[key]
+					set_properties({'source_type': 'DIRECT', 'provider': provider.upper()})
 				set_properties({'name': name.upper(), 'source_site': source_site, 'provider_icon': provider_icon, 'quality_icon': quality_icon, 'count': '%02d.' % count,
-						'size_label': get('size_label', 'N/A'), 'extraInfo': extraInfo, 'quality': quality.upper(), 'hash': get('hash', 'N/A'), 'source': json.dumps(item)})	
+						'size_label': get('size_label', 'N/A'), 'extraInfo': extraInfo, 'quality': quality.upper(), 'hash': get('hash', 'N/A'), 'source': json.dumps(item),
+						'highlight': item_highlight})
 				item_list.append((listitem, count))
 			except: pass
 		try:
@@ -296,9 +295,6 @@ class SourcesResults(BaseDialog):
 		self.setProperty('title', self.meta_get('title'))
 		self.setProperty('total_results', self.total_results)
 		self.setProperty('filters_ignored', '| Filters Ignored' if self.filters_ignored else '')
-		if self.prescrape_empty_notice:
-			self.setProperty('prescrape_empty_notice', self.prescrape_empty_notice_main)
-			self.setProperty('prescrape_empty_notice_sub', self.prescrape_empty_notice_sub)
 
 	def set_poster(self):
 		if self.window_id == 2000: self.set_image(200, self.poster)

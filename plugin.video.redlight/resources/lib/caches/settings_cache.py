@@ -22,6 +22,16 @@ _DEFAULTS_MAP = None
 def _properties_loaded():
 	return kodi_utils.get_property(_SETTINGS_PROPERTIES_LOADED) == 'true'
 
+_CREDENTIAL_STRING_SETTINGS = frozenset(('tmdb_api', 'trakt.client', 'trakt.secret', 'tmdb.lists_read_token', 'omdb_api'))
+
+def normalize_credential_string(value):
+	if value in (None, 'empty_setting'): return ''
+	return str(value).strip()
+
+def looks_like_tmdb_v4_jwt(value):
+	value = normalize_credential_string(value)
+	return len(value) > 48 and value.startswith('eyJ') and value.count('.') >= 2
+
 def property_safe_string(value):
 	if value is None: return ''
 	value = str(value).replace('\x00', '')
@@ -72,6 +82,9 @@ def sanitize_setting_value(setting_id, value, setting_info=None, validate_paths=
 			from modules.settings import simkl_user_active
 			if simkl_user_active(): return value
 		return '0'
+	if setting_id in _CREDENTIAL_STRING_SETTINGS:
+		if value in (None, 'empty_setting', ''): return default if value is None else value
+		return normalize_credential_string(value)
 	if len(value) > _MAX_PROPERTY_LEN: return value[:_MAX_PROPERTY_LEN]
 	return value
 
@@ -302,6 +315,28 @@ def run_deferred_setup_if_needed():
 	except Exception as e:
 		kodi_utils.logger('run_deferred_setup_if_needed', str(e))
 
+def run_deferred_setup_background_if_needed():
+	if kodi_utils.get_property(_DEFERRED_SETUP_DONE) == 'true': return
+	kodi_utils.set_property(_DEFERRED_SETUP_DONE, 'true')
+	from threading import Thread
+	def _run():
+		try:
+			from service import run_deferred_service_setup
+			run_deferred_service_setup()
+		except Exception as e:
+			kodi_utils.logger('run_deferred_setup_if_needed', str(e))
+	Thread(target=_run, daemon=True).start()
+
+_DIRECTORY_LISTING_MODES = frozenset((
+	'build_movie_list', 'build_tvshow_list', 'build_season_list', 'build_episode_list',
+	'build_in_progress_episode', 'build_recently_watched_episode', 'build_next_episode',
+	'build_my_calendar', 'build_next_episode_manager'))
+
+def is_directory_listing_mode(mode):
+	if not mode: return False
+	if mode.startswith('navigator.'): return True
+	return mode in _DIRECTORY_LISTING_MODES
+
 def load_settings_properties(force=False):
 	bootstrap_settings_properties(force=force)
 	refresh_widgets_after_db_migration()
@@ -412,12 +447,18 @@ def set_boolean(params):
 	set_setting(setting, boolean_dict[get_setting('redlight.%s' % setting)])
 
 def set_string(params):
-	current_value = get_setting('redlight.%s' % params['setting_id'])
+	setting_id = params['setting_id']
+	current_value = get_setting('redlight.%s' % setting_id)
 	current_value = current_value.replace('empty_setting', '')
 	new_value = kodi_utils.kodi_dialog().input('', defaultt=current_value)
 	if not new_value and not kodi_utils.confirm_dialog(text='Enter Blank Value?', ok_label='Yes', cancel_label='Re-Enter Value', default_control=11):
 		return set_string(params)
-	set_setting(params['setting_id'], new_value or 'empty_setting')
+	if setting_id in _CREDENTIAL_STRING_SETTINGS:
+		new_value = normalize_credential_string(new_value)
+	if setting_id == 'tmdb_api' and new_value and looks_like_tmdb_v4_jwt(new_value):
+		kodi_utils.ok_dialog(heading='Wrong key type', text='This is a TMDb v4 Read Access Token (JWT), not the v3 API Key.[CR]Use TMDb Lists → Read Access Token for v4 tokens.')
+		return set_string(params)
+	set_setting(setting_id, new_value or 'empty_setting')
 
 def set_numeric(params):
 	setting_id = params['setting_id']
@@ -464,7 +505,15 @@ def set_from_list(params):
 	new_value = kodi_utils.select_dialog(settings_list, **{'items': json.dumps([{'line1': item[0]} for item in settings_list]), 'narrow_window': 'true'})
 	if not new_value: return
 	setting_value = new_value[1]
+	prev_value = get_setting('redlight.%s' % setting_id) if setting_id == 'watched_indicators' else None
 	set_setting(setting_id, setting_value)
+	if setting_id == 'watched_indicators' and setting_value == '2' and str(prev_value) != '2':
+		try:
+			from modules.settings import trakt_user_active, offer_trakt_import_to_simkl
+			if trakt_user_active() and not offer_trakt_import_to_simkl():
+				from apis.simkl_api import simkl_sync_activities
+				simkl_sync_activities(force_update=True)
+		except: pass
 
 def set_source_folder_path(params):
 	setting_id = params['setting_id']
@@ -588,9 +637,11 @@ def default_settings():
 #==================== Contents Sort Order For Watched Progress
 {'setting_id': 'sort.progress', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Title', '1': 'Recently Watched'}},
 {'setting_id': 'sort.watched', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Title', '1': 'Recently Watched'}},
+#==================== Contents Sort Order For Simkl Lists
+{'setting_id': 'sort.simkl', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Title', '1': 'Date Added (desc)', '2': 'Release Date (desc)', '3': 'Date Added (asc)', '4': 'Release Date (asc)'}},
 #==================== Contents Sort Order For Trakt Lists
-{'setting_id': 'sort.collection', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Title', '1': 'Date Added', '2': 'Release Date'}},
-{'setting_id': 'sort.watchlist', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Title', '1': 'Date Added', '2': 'Release Date'}},
+{'setting_id': 'sort.collection', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Title', '1': 'Date Added (desc)', '2': 'Release Date (desc)', '3': 'Date Added (asc)', '4': 'Release Date (asc)'}},
+{'setting_id': 'sort.watchlist', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Title', '1': 'Date Added (desc)', '2': 'Release Date (desc)', '3': 'Date Added (asc)', '4': 'Release Date (asc)'}},
 #==================== Contents Sort Order For TMDb Lists
 {'setting_id': 'tmdbsort.watchlist', 'setting_type': 'action', 'setting_default': '4', 'settings_options': {'0': 'Title', '1': 'Release Date (asc)', '2': 'Release Date (desc)',
 '3': 'Shuffle', '4': 'Default from TMDb (None)'}},

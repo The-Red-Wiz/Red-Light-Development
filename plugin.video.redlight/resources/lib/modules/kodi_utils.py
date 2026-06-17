@@ -218,8 +218,8 @@ def set_content(handle, content):
 def set_category(handle, label):
 	xbmcplugin.setPluginCategory(handle, label)
 
-def end_directory(handle, cacheToDisc=True):
-	xbmcplugin.endOfDirectory(handle, cacheToDisc=cacheToDisc)
+def end_directory(handle, updateListing=False, cacheToDisc=True):
+	xbmcplugin.endOfDirectory(handle, updateListing=updateListing, cacheToDisc=cacheToDisc)
 
 def set_view_mode(view_type, content='files', is_external=None):
 	if not get_property('redlight.use_viewtypes') == 'true': return

@@ -128,7 +128,7 @@ class TraktMonitor:
 			try:
 				sync_interval, wait_time = trakt_sync_interval()
 				next_update_string = update_string % sync_interval
-				if trakt_user_active: status = trakt_sync_activities()
+				if trakt_user_active(): status = trakt_sync_activities()
 				else: status = 'no_auth'
 				if status == 'failed': kodi_utils.logger('Red Light', trakt_service_string % ('Failed. Error from Trakt', next_update_string))
 				elif status == 'no_auth': kodi_utils.logger('Red Light', trakt_service_string % ('Not Run. No Current Trakt Account', next_update_string))

@@ -1085,6 +1085,22 @@
                           <property name="setting_description">Choose the sort order for your Watched media</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=sort.watched)</onclick>
                       </item>
+        <!-- Contents Sort Order For Simkl Lists -->
+                      <item>
+                          <visible>Container(2000).HasFocus(30)</visible>
+                          <property name="setting_label">Contents Sort Order For Simkl Lists</property>
+                          <property name="setting_type">separator</property>
+                          <onclick>noop</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(30)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
+                          <property name="setting_label">Simkl Lists</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.sort.simkl_name)]</property>
+                          <property name="setting_description">Sort order for Simkl Plan to Watch, Watching, Completed, On Hold, and Dropped. Release Date uses Simkl year or release metadata (TV uses premiere year when full air date is unavailable).</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=sort.simkl)</onclick>
+                      </item>
         <!-- Contents Sort Order For Trakt Lists -->
                       <item>
                           <visible>Container(2000).HasFocus(30)</visible>
@@ -1098,7 +1114,7 @@
                           <property name="setting_label">Trakt Collection</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.sort.collection_name)]</property>
-                          <property name="setting_description">Choose the sort order for your Trakt Collection media</property>
+                          <property name="setting_description">Choose the sort order for your Trakt Collection media. Release Date uses movie release / TV first-air date.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=sort.collection)</onclick>
                       </item>
                       <item>
@@ -1107,7 +1123,7 @@
                           <property name="setting_label">Trakt Watchlist</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.sort.watchlist_name)]</property>
-                          <property name="setting_description">Choose the sort order for your Trakt Watchlist media</property>
+                          <property name="setting_description">Choose the sort order for your Trakt Watchlist media. Release Date uses movie release / TV first-air date.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=sort.watchlist)</onclick>
                       </item>
         <!-- Contents Sort Order For TMDb Lists -->
@@ -1471,6 +1487,15 @@
                           <property name="setting_description">Revoke authorisation of your Simkl account</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=simkl.simkl_revoke_authentication)</onclick>
                       </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
+                          <property name="setting_label">Import Trakt to Simkl</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Open Simkl's official Trakt import page (QR code or copied link). Use when moving watch history from Trakt to Simkl.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=simkl.simkl_import_trakt)</onclick>
+                      </item>
         <!-- Trakt -->
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
@@ -1502,7 +1527,7 @@
                           <property name="setting_label">Client ID Key</property>
                           <property name="setting_type">numeric</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.trakt.client)]</property>
-                          <property name="setting_description">Enter here your Trakt Client ID key</property>
+                          <property name="setting_description">Enter the Client ID from your app at trakt.tv/oauth/applications (or leave the Red Light default)</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_string&amp;setting_id=trakt.client)</onclick>
                       </item>
                       <item>
@@ -1518,7 +1543,7 @@
                           <property name="setting_label">Client Secret Key</property>
                           <property name="setting_type">numeric</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.trakt.secret)]</property>
-                          <property name="setting_description">Enter here your Trakt Client Secret key</property>
+                          <property name="setting_description">Enter the Client Secret from the same Trakt app as the Client ID above</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_string&amp;setting_id=trakt.secret)</onclick>
                       </item>
                       <item>
@@ -1530,6 +1555,14 @@
                           <property name="setting_description">Restore default Trakt Client Secret Key</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.restore_setting_default&amp;setting_id=trakt.secret)</onclick>
                       </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
+                          <property name="setting_label">Test Client Keys...</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Check that your Trakt Client ID (and Secret if set) are accepted by Trakt before using Authorise</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=trakt_credentials_check_choice)</onclick>
+                      </item>
         <!-- TMDb API -->
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
@@ -1539,10 +1572,10 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
-                          <property name="setting_label">API Key</property>
+                          <property name="setting_label">API Key (v3 API)</property>
                           <property name="setting_type">numeric</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb_api)]</property>
-                          <property name="setting_description">Enter here your TMDb API key</property>
+                          <property name="setting_description">Enter the 32-character TMDb API Key (v3 auth) from themoviedb.org/settings/api — not the v4 Read Access Token</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_string&amp;setting_id=tmdb_api)</onclick>
                       </item>
                       <item>
@@ -1572,7 +1605,7 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
-                          <property name="setting_label">Lists Read Access Token</property>
+                          <property name="setting_label">Lists Read Access Token (v4 token)</property>
                           <property name="setting_type">numeric</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb.lists_read_token)]</property>
                           <property name="setting_description">Enter your TMDb v4 read access token (JWT). Used for TMDb Lists account authorisation and API calls before you sign in with Authorise Account. Create one at themoviedb.org/settings/api with API Read Access permission.</property>

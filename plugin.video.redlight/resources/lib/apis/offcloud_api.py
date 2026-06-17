@@ -143,8 +143,7 @@ class OffcloudAPI:
 		if username:
 			set_setting('oc.account_id', username)
 		self.clear_cache()
-		notification('Offcloud successfully authorised', 3000)
-		ok_dialog(text='Success')
+		ok_dialog(heading='Offcloud', text='Account authorised.')
 
 	def item_play_link(self, item):
 		url = item.get('url')

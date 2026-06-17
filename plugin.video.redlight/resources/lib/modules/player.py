@@ -73,7 +73,7 @@ class RedLightPlayer(xbmc.Player):
 					if not self.sources_object._resolve_user_cancelled:
 						self.kill_dialog()
 				else:
-					self.kill_dialog()
+					# Keep the resolver progress UI so play_file can try the next queued source.
 					self.run_error()
 				self.safe_stop()
 		try: del self.kodi_monitor
@@ -477,14 +477,12 @@ class RedLightPlayer(xbmc.Player):
 		except:
 			pass
 		self.clear_playback_properties(clear_navigation=not self.is_generic)
-		text = message or 'This link could not be played. It may be expired, removed, or unsupported on this device.'
 		if self.is_generic and ku.get_property('redlight.browse_playback') == 'true':
 			return ku.notification('Playback Failed', 4000, settle_ms=400)
-		try:
-			if not self.is_generic and getattr(self, 'sources_object', None):
-				return self.sources_object._show_playback_failed_dialog(text)
-		except:
-			pass
+		# play_file walks the resolve queue and calls playback_failed_action after the last attempt.
+		if not self.is_generic and getattr(self, 'sources_object', None):
+			return
+		text = message or 'This link could not be played. It may be expired, removed, or unsupported on this device.'
 		ku.hide_busy_dialog()
 		ku.sleep(400)
 		try:

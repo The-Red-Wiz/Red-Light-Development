@@ -77,6 +77,10 @@ def clear_all_simkl_cache_data(silent=False, refresh=True):
 		dbcon.execute('DELETE FROM watched')
 		dbcon.execute('DELETE FROM progress')
 		dbcon.execute('VACUUM')
+		try:
+			from caches.lists_cache import lists_cache
+			lists_cache.delete_like('simkl_all_items_%')
+		except: pass
 		if not silent: kodi_utils.notification('Simkl Cache Cleared', 3000)
 		if refresh:
 			from apis.simkl_api import simkl_sync_activities

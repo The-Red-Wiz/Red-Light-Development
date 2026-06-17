@@ -104,6 +104,8 @@ class StillWatching(BaseDialog):
 		self.selected = False
 		self.meta = kwargs.get('meta')
 		self.check_text = kwargs.get('check_text')
+		self.heading = kwargs.get('heading') or 'Still Watching?'
+		self.right_align = kwargs.get('right_align', 'false')
 		self.set_properties()
 
 	def onInit(self):
@@ -132,6 +134,8 @@ class StillWatching(BaseDialog):
 		self.setProperty('mode', 'still_watching')
 		self.setProperty('thumb', landscape or fanart)
 		if not landscape: self.setProperty('clearlogo', clearlogo)
+		self.setProperty('still_watching_heading', self.heading)
+		self.setProperty('right_align', self.right_align)
 		self.setProperty('episode_label', self.check_text % self.meta['title'])
 
 	def monitor(self):

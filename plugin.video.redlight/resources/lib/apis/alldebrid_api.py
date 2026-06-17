@@ -54,7 +54,7 @@ class AllDebridAPI:
 				self.token = str(response['apikey'])
 				set_setting('ad.token', self.token)
 			except:
-				ok_dialog(text='Error')
+				ok_dialog(heading='All Debrid', text='Authorisation failed.')
 				break
 		try: progressDialog.close()
 		except: pass
@@ -63,7 +63,7 @@ class AllDebridAPI:
 			account_info = self._get('user')
 			set_setting('ad.account_id', str(account_info['user']['username']))
 			set_setting('ad.enabled', 'true')
-			ok_dialog(text='Success')
+			ok_dialog(heading='All Debrid', text='Account authorised.')
 
 	def revoke(self):
 		set_setting('ad.token', 'empty_setting')

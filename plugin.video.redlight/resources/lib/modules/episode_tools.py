@@ -87,6 +87,8 @@ class EpisodeTools:
 			if not first_run:
 				url_params['background'] = 'true'
 				url_params['play_type'] = 'random_continual'
+				url_params['autoplay'] = 'true'
+				url_params['random_continual'] = 'true'
 		except: url_params = 'error'
 		return self.add_playback_key(url_params)
 

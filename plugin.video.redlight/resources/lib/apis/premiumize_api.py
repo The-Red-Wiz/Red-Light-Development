@@ -48,7 +48,7 @@ class PremiumizeAPI:
 				self.token = str(response['access_token'])
 				set_setting('pm.token', self.token)
 			except:
-				 ok_dialog(text='Error')
+				 ok_dialog(heading='Premiumize', text='Authorisation failed.')
 				 break
 		try: progressDialog.close()
 		except: pass
@@ -56,7 +56,7 @@ class PremiumizeAPI:
 			account_info = self.account_info()
 			set_setting('pm.account_id', str(account_info['customer_id']))
 			set_setting('pm.enabled', 'true')
-			ok_dialog(text='Success')
+			ok_dialog(heading='Premiumize', text='Account authorised.')
 
 	def revoke(self):
 		set_setting('pm.token', 'empty_setting')

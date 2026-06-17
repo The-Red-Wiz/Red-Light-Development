@@ -439,10 +439,20 @@ def preferred_filters_choice(params):
 
 def tmdb_api_check_choice(params):
 	from apis.tmdb_api import movie_details
-	data = movie_details('299534', settings.tmdb_api_key())
-	if not data.get('success', True): text = 'There is an issue with your API Key.[CR][B]"Error: %s"[/B]' % data.get('status_message', '')
-	else: text = 'Your TMDb API Key is enabled and working'
-	return kodi_utils.ok_dialog(text=text)
+	from caches.settings_cache import looks_like_tmdb_v4_jwt
+	api_key = settings.tmdb_api_key()
+	if looks_like_tmdb_v4_jwt(api_key):
+		return kodi_utils.ok_dialog(heading='Wrong key type', text='This is a TMDb v4 Read Access Token (JWT), not the v3 API Key.[CR]Use TMDb Lists → Read Access Token for v4 tokens.')
+	data = movie_details('299534', api_key)
+	if not data or not data.get('success', True):
+		text = 'TMDb API Key failed.[CR]%s' % (data or {}).get('status_message', 'Unknown error')
+		return kodi_utils.ok_dialog(heading='Failed', text=text)
+	return kodi_utils.ok_dialog(heading='Success', text='TMDb API Key is valid.')
+
+def trakt_credentials_check_choice(params):
+	from apis.trakt_api import trakt_test_credentials
+	ok, text = trakt_test_credentials()
+	return kodi_utils.ok_dialog(heading='Success' if ok else 'Failed', text=text)
 
 def tmdblist_read_token_check_choice(params):
 	import requests
@@ -450,11 +460,12 @@ def tmdblist_read_token_check_choice(params):
 	api = TMDbListAPI()
 	try:
 		data = requests.post('%s/auth/request_token' % api.base_url, headers=api.read_access_headers(), timeout=20).json()
-		if not data.get('success'): text = 'There is an issue with your TMDb Lists Read Access Token.[CR][B]"Error: %s"[/B]' % data.get('status_message', '')
-		else: text = 'Your TMDb Lists Read Access Token is valid and working'
+		if not data.get('success'):
+			text = 'Lists read access token failed.[CR]%s' % data.get('status_message', 'Unknown error')
+			return kodi_utils.ok_dialog(heading='Failed', text=text)
+		return kodi_utils.ok_dialog(heading='Success', text='Lists read access token is valid.')
 	except Exception as e:
-		text = 'There is an issue with your TMDb Lists Read Access Token.[CR][B]"%s"[/B]' % str(e)
-	return kodi_utils.ok_dialog(text=text)
+		return kodi_utils.ok_dialog(heading='Failed', text='Lists read access token failed.[CR]%s' % str(e))
 
 def clear_sources_folder_choice(params):
 	setting_id = params['setting_id']
@@ -619,36 +630,8 @@ def trakt_manager_choice(params):
 	trakt_api.add_to_list(selected['user'], selected['slug'], data) if choice == 'add' else trakt_api.remove_from_list(selected['user'], selected['slug'], data)
 
 def simkl_manager_choice(params):
-	if not settings.simkl_user_active(): return kodi_utils.notification('No Active Simkl Account', 3500)
 	from apis import simkl_api
-	icon = params.get('icon', None) or kodi_utils.get_icon('simkl')
-	media_type = params.get('media_type', 'tvshow')
-	list_media = 'movie' if media_type == 'movie' else 'tvshow'
-	choices = [
-		('Mark as [B]Watched[/B]', 'mark_watched'),
-		('Mark as [B]Unwatched[/B]', 'mark_unwatched'),
-		('Reset [B]Scrobble[/B]', 'reset_scrobble'),
-		('Add to [B]Plan to Watch[/B]', 'plantowatch_add'),
-		('Remove from [B]Plan to Watch[/B]', 'plantowatch_remove'),
-		('Add to [B]On Hold[/B]', 'hold_add'),
-		('Remove from [B]On Hold[/B]', 'hold_remove'),
-		('Add to [B]Dropped[/B]', 'dropped_add'),
-		('Remove from [B]Dropped[/B]', 'dropped_remove'),
-	]
-	list_items = [{'line1': item[0], 'icon': icon} for item in choices]
-	kwargs = {'items': json.dumps(list_items), 'heading': 'Simkl Lists Manager'}
-	choice = kodi_utils.select_dialog([i[1] for i in choices], **kwargs)
-	if choice == None: return
-	tmdb_id, imdb_id, tvdb_id = params['tmdb_id'], params.get('imdb_id'), params.get('tvdb_id', 'None')
-	if choice == 'mark_watched': return _trakt_manager_mark(params, 'mark_as_watched')
-	if choice == 'mark_unwatched': return _trakt_manager_mark(params, 'mark_as_unwatched')
-	if choice == 'reset_scrobble': return simkl_api.simkl_reset_scrobble(params)
-	if choice == 'plantowatch_add': return simkl_api.simkl_add_to_list('plantowatch', tmdb_id, list_media, imdb_id, tvdb_id)
-	if choice == 'plantowatch_remove': return simkl_api.simkl_remove_from_list('plantowatch', tmdb_id, list_media, imdb_id, tvdb_id)
-	if choice == 'hold_add': return simkl_api.simkl_add_to_list('hold', tmdb_id, list_media, imdb_id, tvdb_id)
-	if choice == 'hold_remove': return simkl_api.simkl_remove_from_list('hold', tmdb_id, list_media, imdb_id, tvdb_id)
-	if choice == 'dropped_add': return simkl_api.simkl_add_to_list('dropped', tmdb_id, list_media, imdb_id, tvdb_id)
-	if choice == 'dropped_remove': return simkl_api.simkl_remove_from_list('dropped', tmdb_id, list_media, imdb_id, tvdb_id)
+	return simkl_api.simkl_manager_choice(params)
 
 def episode_groups_choice(params):
 	from modules.metadata import episode_groups
