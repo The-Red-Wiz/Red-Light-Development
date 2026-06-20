@@ -192,21 +192,60 @@ def get_addon_fanart():
 def build_url(url_params):
 	return 'plugin://plugin.video.redlight/?%s' % urlencode(url_params)
 
+_FOLDER_URL_SKIP = frozenset(('iconImage', 'random_support', 'random', 'name', 'isFolder'))
+
+def build_folder_url(url_params):
+	routing = {k: v for k, v in url_params.items() if k not in _FOLDER_URL_SKIP and v not in (None, '')}
+	mode = routing.get('mode', url_params.get('mode', ''))
+	if 'category_name' not in routing and url_params.get('name') and mode in ('build_movie_list', 'build_tvshow_list'):
+		routing['category_name'] = url_params['name']
+	return build_url(routing)
+
+def sanitize_folder_url(url):
+	if not url or 'plugin.video.redlight' not in url: return url
+	try:
+		from urllib.parse import parse_qsl, unquote
+		query = unquote(url.split('?', 1)[-1])
+		params = dict(parse_qsl(query, keep_blank_values=True))
+		return build_folder_url(params)
+	except: return url
+
+def set_browse_exit_params(list_mode='tvshow', action=None):
+	if external(): return
+	set_property('redlight.exit_params', browse_list_exit_params(list_mode, action))
+
 def browse_list_exit_params(list_mode='tvshow', action=None):
 	folder_path = get_infolabel('Container.FolderPath')
 	parent_tokens = ('navigator.', 'mdblist.', 'simkl.', 'trakt.list', 'tmdblist.', 'personal_lists.', 'build_tmdb_lists_contents')
 	if any(token in folder_path for token in parent_tokens):
-		return folder_path
+		return sanitize_folder_url(folder_path)
 	if action:
 		action_parent = _browse_action_exit_params.get(action)
-		if action_parent: return build_url(action_parent)
+		if action_parent: return build_folder_url(action_parent)
 		subnav_parent = _browse_subnav_exit_params.get(action)
-		if subnav_parent: return build_url(subnav_parent)
+		if subnav_parent: return build_folder_url(subnav_parent)
 	build_mode = 'build_movie_list' if list_mode == 'movie' else 'build_tvshow_list'
 	if build_mode in folder_path:
 		nav_actions = {'movie': 'MovieList', 'tvshow': 'TVShowList', 'anime': 'AnimeList'}
-		return build_url({'mode': 'navigator.main', 'action': nav_actions.get(list_mode, 'TVShowList')})
-	return folder_path
+		return build_folder_url({'mode': 'navigator.main', 'action': nav_actions.get(list_mode, 'TVShowList')})
+	return sanitize_folder_url(folder_path)
+
+def list_collection_exit_params(params=None):
+	folder_path = get_infolabel('Container.FolderPath')
+	parent_tokens = (
+		'trakt.list.get_trakt_lists', 'trakt.list.search_trakt', 'trakt.list.get_trakt_user_lists',
+		'tmdblist.get_tmdb_lists', 'personal_lists.get_personal_lists', 'navigator.', 'mdblist.', 'simkl.')
+	if any(token in folder_path for token in parent_tokens):
+		return sanitize_folder_url(folder_path)
+	params = params or {}
+	mode = params.get('mode', '')
+	if mode in ('trakt.list.build_trakt_list', 'random.build_trakt_lists_contents'):
+		return build_folder_url({'mode': 'trakt.list.get_trakt_lists', 'list_type': params.get('list_type', 'my_lists')})
+	if mode in ('tmdblist.build_tmdb_list', 'random.build_tmdb_lists_contents'):
+		return build_folder_url({'mode': 'tmdblist.get_tmdb_lists'})
+	if mode in ('personal_lists.build_personal_list', 'random.build_personal_lists_contents'):
+		return build_folder_url({'mode': 'personal_lists.get_personal_lists'})
+	return sanitize_folder_url(folder_path)
 
 _browse_action_exit_params = {
 	'mdblist_watchlist': {'mode': 'navigator.mdblist_lists'},

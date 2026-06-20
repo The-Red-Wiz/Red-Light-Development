@@ -49,7 +49,7 @@ class Movies:
 			try: function = manual_function_import(var_module, import_function)
 			except: pass
 			if page_no == 1 and not self.is_external and self.action != 'mdblist_user_list':
-				kodi_utils.set_property('redlight.exit_params', kodi_utils.browse_list_exit_params('movie', self.action))
+				kodi_utils.set_browse_exit_params('movie', self.action)
 			if self.action in self.main:
 				data = function(page_no)
 				results = data['results']

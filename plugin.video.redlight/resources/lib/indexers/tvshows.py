@@ -55,10 +55,9 @@ class TVShows:
 			try: page_no = int(self.params_get('new_page', '1'))
 			except: page_no = self.params_get('new_page')
 			if page_no == 1 and not self.is_external and self.action != 'mdblist_user_list':
-				folder_path = kodi_utils.folder_path()
-				if not any([x in folder_path for x in ('build_season_list', 'build_episode_list')]):
+				if not any([x in kodi_utils.folder_path() for x in ('build_season_list', 'build_episode_list')]):
 					list_mode = 'anime' if self.is_anime_list is True else 'tvshow'
-					kodi_utils.set_property('redlight.exit_params', kodi_utils.browse_list_exit_params(list_mode, self.action))
+					kodi_utils.set_browse_exit_params(list_mode, self.action)
 			if self.action in self.personal: var_module, import_function = self.personal[self.action]
 			elif self.action in self.most_watched:
 				from modules.most_watched import normalize_most_watched_action

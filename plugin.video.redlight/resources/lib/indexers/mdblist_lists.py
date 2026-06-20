@@ -8,16 +8,16 @@ from modules import kodi_utils, settings
 def _mdbl_parent_exit_path(params=None):
 	folder_path = kodi_utils.folder_path()
 	parent_tokens = ('navigator.mdblist_lists', 'navigator.my_lists', 'get_mdbl_lists', 'get_mdbl_liked_lists', 'get_mdbl_top_lists')
-	if any(token in folder_path for token in parent_tokens): return folder_path
+	if any(token in folder_path for token in parent_tokens): return kodi_utils.sanitize_folder_url(folder_path)
 	params = params or {}
 	list_type = params.get('list_type', 'my_lists')
 	media_type = params.get('media_type', 'movie')
 	if list_type == 'liked_lists':
 		label = 'Movies Liked Lists' if media_type in ('movie', 'movies') else 'TV Shows Liked Lists'
-		return kodi_utils.build_url({'mode': 'mdblist.get_mdbl_liked_lists', 'name': label, 'media_type': media_type})
+		return kodi_utils.build_folder_url({'mode': 'mdblist.get_mdbl_liked_lists', 'name': label, 'media_type': media_type})
 	if list_type == 'user_lists':
-		return kodi_utils.build_url({'mode': 'mdblist.get_mdbl_top_lists', 'name': 'Popular MDBLists', 'media_type': media_type})
-	return kodi_utils.build_url({'mode': 'mdblist.get_mdbl_lists', 'name': 'My Lists', 'media_type': media_type})
+		return kodi_utils.build_folder_url({'mode': 'mdblist.get_mdbl_top_lists', 'name': 'Popular MDBLists', 'media_type': media_type})
+	return kodi_utils.build_folder_url({'mode': 'mdblist.get_mdbl_lists', 'name': 'My Lists', 'media_type': media_type})
 
 def _set_mdbl_browse_exit_params():
 	if kodi_utils.external(): return
