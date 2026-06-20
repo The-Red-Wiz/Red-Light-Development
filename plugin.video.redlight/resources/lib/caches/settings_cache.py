@@ -396,6 +396,14 @@ def sync_settings(params={}):
 		from modules.settings import migrate_simkl_context_menu_for_upgrade, migrate_cm_manager_order_for_upgrade
 		if migrate_simkl_context_menu_for_upgrade(had_existing_settings): migrated = True
 		if migrate_cm_manager_order_for_upgrade(): migrated = True
+		if currentsettings.get('migration.my_content_nav_mode_v136') != 'true':
+			try:
+				from caches.navigator_cache import migrate_my_content_nav_mode
+				if migrate_my_content_nav_mode(): migrated = True
+			except: pass
+			settings_cache.write_db('migration.my_content_nav_mode_v136', 'true', defaults_map.get('migration.my_content_nav_mode_v136'))
+			currentsettings['migration.my_content_nav_mode_v136'] = 'true'
+			if load_properties: settings_cache.set_memory_cache('migration.my_content_nav_mode_v136', 'true')
 		for setting_id, value in list(currentsettings.items()):
 			if setting_id not in defaults_map: continue
 			sanitized = sanitize_setting_value(setting_id, value, defaults_map[setting_id], validate_paths=False)
@@ -724,6 +732,7 @@ def default_settings():
 {'setting_id': 'provider.external', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'external_scraper.name', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'migration.cache_check_pm_oc_tb_v129e', 'setting_type': 'boolean', 'setting_default': 'false'},
+{'setting_id': 'migration.my_content_nav_mode_v136', 'setting_type': 'boolean', 'setting_default': 'false'},
 #==================== Real Debrid
 {'setting_id': 'rd.token', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'rd.enabled', 'setting_type': 'boolean', 'setting_default': 'false'},

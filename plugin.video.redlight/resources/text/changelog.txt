@@ -1,3 +1,12 @@
+[COLOR red][B]Version 1.3.6[/B][/COLOR]
+- Fixed My Lists failing to open when a saved menu still used the old navigator.my_content route (alias plus one-time menu migration).
+- Simkl: single Simkl Lists entry under My Lists (removed duplicate Simkl My Content menu).
+- Simkl: Force Simkl Sync now shows a success notification like Force Trakt Sync.
+- Search: main Search menu keeps Search Trakt User Lists only (no Simkl entry; Simkl list search remains under Simkl Lists).
+- Trakt Lists (personal): Search My Trakt Lists filters your own lists by name.
+- Fixed Autoscrape confirm dialog: compact top-right card without the full-width dim tint band.
+- Fixed settings bootstrap / Remake Settings Cache error that could leave the settings UI on a white background.
+
 [COLOR red][B]Version 1.3.5[/B][/COLOR]
 - Simkl Lists Manager: dynamic add/remove for Plan to Watch, Watching, Completed, On Hold, and Dropped (from cached list data); shortcuts to open status lists; lighter refresh after list changes (no full sync on every edit).
 - Simkl lists: Search My Simkl Lists finds titles across your status lists (includes anime).
@@ -6,7 +15,7 @@
 - Trakt Collection and Watchlist: added Date Added (asc) and Release Date (asc) sort options (earliest air/release or added date first).
 - Meta Accounts: Trakt Authorise now explains when custom Client ID/Secret are rejected; new Test Client Credentials action under Trakt.
 - Meta Accounts: TMDb API key entry trims whitespace, warns when a v4 Read Access Token is pasted into the v3 API Key field, and Test API Key checks for the same mistake.
-- Fixed Play Random: auto-starts a source again when global Autoplay Episodes is off (random play keeps its own autoplay path; continual random chains in the background).
+- Fixed Play Random: auto-starts a source when global Autoplay Episodes is off (random play keeps its own autoplay path; continual random chains in the background).
 - Autoscrape: confirm-before-scrape prompt now uses an Autoscrape Next Episode heading and aligns top-right to match the post-scrape flow.
 - Prescrape: debrid cloud scrapers (e.g. Premiumize) no longer run again during the full scrape when they already ran in prescrape.
 - Prescrape: playback failure no longer restarts the full scrape when prescrape already returned results (avoids duplicate Premiumize cloud passes).

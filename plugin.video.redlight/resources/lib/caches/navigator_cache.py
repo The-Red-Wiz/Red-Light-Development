@@ -259,4 +259,35 @@ class NavigatorCache:
 			{'mode': 'random.build_tvshow_list', 'action': 'simkl_dropped', 'name': 'Random Simkl TV Dropped', 'iconImage': 'simkl', 'random': 'true'},
 				]
 
+def migrate_my_content_nav_mode():
+	"""Rewrite stored menus that still use navigator.my_content to navigator.my_lists."""
+	nc = NavigatorCache()
+	changed = False
+	def _patch(items):
+		nonlocal changed
+		if not items: return items
+		out = []
+		for item in items:
+			row = dict(item)
+			if row.get('mode') == 'navigator.my_content':
+				row['mode'] = 'navigator.my_lists'
+				changed = True
+			out.append(row)
+		return out
+	try:
+		dbcon = connect_database('navigator_db')
+		for list_name, list_type, raw in dbcon.execute('SELECT list_name, list_type, list_contents FROM navigator').fetchall():
+			try: contents = eval(raw)
+			except: continue
+			patched = _patch(contents)
+			if patched != contents:
+				nc.set_list(list_name, list_type, patched)
+				changed = True
+	except: pass
+	if changed:
+		for list_name in NavigatorCache.main_menus:
+			nc.delete_memory_cache(list_name, 'default')
+			nc.delete_memory_cache(list_name, 'edited')
+	return changed
+
 navigator_cache = NavigatorCache()

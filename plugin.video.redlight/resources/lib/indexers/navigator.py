@@ -108,6 +108,9 @@ class Navigator:
 		self.add({'mode': 'favorite_people', 'isFolder': 'false', 'name': 'People'}, 'People', 'empty_person')
 		self.end_directory()
 
+	def my_content(self):
+		return self.my_lists()
+
 	def my_lists(self):
 		if s.simkl_user_active():
 			self._safe_add(self._simkl_lists_menu(), 'Simkl Lists', 'simkl')
