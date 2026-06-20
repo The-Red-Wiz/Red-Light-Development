@@ -1,3 +1,7 @@
+[COLOR red][B]Version 1.4.0[/B][/COLOR]
+- Fixed Autoscrape confirm dialog: 10-second countdown restored to original behaviour — press Yes during the countdown to scrape; if it reaches 0 (or playback ends) the dialog closes and autoscrape is cancelled.
+- Fixed addon update resetting Language Invoker and icon: saved settings are written back into addon.xml after a repo update (no notification or forced trip to Home).
+
 [COLOR red][B]Version 1.3.9[/B][/COLOR]
 - Fixed autoscrape/autoplay binge playback: next-episode prep no longer blocks scheduling the following episode while the current next one is still playing.
 - Fixed Still Watching and Autoplay Next Episode dialogs: countdown timers restored (no longer depend on Kodi player infolabels or active playback).

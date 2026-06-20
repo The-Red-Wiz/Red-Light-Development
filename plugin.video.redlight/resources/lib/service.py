@@ -79,6 +79,8 @@ def start_custom_windows_prepare():
 def run_deferred_service_setup():
 	global _custom_windows_thread_started
 	kodi_utils.logger('Red Light', 'Deferred Service Setup Starting')
+	try: kodi_utils.restore_addon_xml_from_settings()
+	except Exception as e: kodi_utils.logger('DeferredServiceSetup', 'RestoreAddonXml: %s' % e)
 	try: OnUpdateChanges().run()
 	except Exception as e: kodi_utils.logger('DeferredServiceSetup', 'OnUpdateChanges: %s' % e)
 	try:
@@ -264,6 +266,8 @@ class RedLightMonitor(Monitor):
 		except Exception as e: kodi_utils.logger('DatabaseMaintenance', str(e))
 		try: SyncSettings().run()
 		except Exception as e: kodi_utils.logger('SyncSettings', str(e))
+		try: kodi_utils.restore_addon_xml_from_settings()
+		except Exception as e: kodi_utils.logger('RestoreAddonXml', str(e))
 		Thread(target=BootstrapSettings().run).start()
 		start_custom_windows_prepare()
 		Thread(target=TraktMonitor().run).start()

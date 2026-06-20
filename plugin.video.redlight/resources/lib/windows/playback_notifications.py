@@ -162,20 +162,17 @@ class StillWatching(BaseDialog):
 		self.setProperty('pause_timer', '')
 
 	def monitor(self):
-		if self.compact_confirm:
-			try:
-				while not self.closed:
-					self.sleep(200)
-			except:
-				pass
-			return
 		pause_timer = 10
 		try:
 			while not self.closed and pause_timer >= 0:
+				if self.compact_confirm:
+					try:
+						if not self.player.isPlayingVideo() and not self.player.isPlaying(): break
+					except: pass
 				self.setProperty('pause_timer', '%02d %s' % (pause_timer, 'seconds' if pause_timer > 1 else 'second'))
 				self.sleep(1000)
-				if pause_timer == 0:
-					break
+				if self.closed: return
+				if pause_timer == 0: break
 				pause_timer -= 1
 		except:
 			pass

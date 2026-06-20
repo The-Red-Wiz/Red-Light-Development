@@ -439,6 +439,75 @@ def update_local_addons():
 	execute_builtin('UpdateLocalAddons', True)
 	sleep(2500)
 
+def addon_ui_busy():
+	try:
+		player = xbmc.Player()
+		if player.isPlaying() or player.isPlayingVideo(): return True
+	except: pass
+	if get_property('redlight.window_loaded') == 'true': return True
+	try:
+		if xbmc.getCondVisibility('Window.IsActive(dialog)'): return True
+	except: pass
+	return False
+
+def sync_addon_xml_from_settings(addon_name='plugin.video.redlight'):
+	from xml.dom.minidom import parse as mdParse
+	from caches.settings_cache import get_setting
+	addon_xml = translate_path('special://home/addons/%s/addon.xml' % addon_name)
+	if not path_exists(addon_xml): return False, False
+	invoker_setting = get_setting('redlight.reuse_language_invoker', None)
+	icon_setting = get_setting('redlight.addon_icon_choice', None)
+	if invoker_setting is None and icon_setting is None: return False, False
+	root = mdParse(addon_xml)
+	changed = False
+	invoker_changed = False
+	if invoker_setting is not None:
+		tags = root.getElementsByTagName('reuselanguageinvoker')
+		if tags:
+			node = tags[0].firstChild
+			if node and node.data != invoker_setting:
+				node.data = invoker_setting
+				changed = True
+				invoker_changed = True
+	if icon_setting is not None:
+		tags = root.getElementsByTagName('icon')
+		if tags:
+			node = tags[0].firstChild
+			if node and node.data != icon_setting:
+				node.data = icon_setting
+				changed = True
+	if changed:
+		new_xml = str(root.toxml()).replace('<?xml version="1.0" ?>', '')
+		with open(addon_xml, 'w') as f: f.write(new_xml)
+	return changed, invoker_changed
+
+def schedule_addon_metadata_reload(invoker_changed=False):
+	from threading import Thread
+	def _run():
+		update_local_addons()
+		if not invoker_changed: return
+		monitor = kodi_monitor()
+		attempts = 0
+		while attempts < 72 and not monitor.abortRequested():
+			if not addon_ui_busy():
+				disable_enable_addon()
+				logger('Red Light', 'Language invoker synced from settings after addon update')
+				return
+			attempts += 1
+			monitor.waitForAbort(5)
+	Thread(target=_run, daemon=True).start()
+
+def restore_addon_xml_from_settings():
+	try:
+		changed, invoker_changed = sync_addon_xml_from_settings()
+		if not changed: return False
+		logger('Red Light', 'Restored addon.xml from settings after update')
+		schedule_addon_metadata_reload(invoker_changed)
+		return True
+	except Exception as e:
+		logger('restore_addon_xml_from_settings', str(e))
+		return False
+
 def update_kodi_addons_db(addon_name='plugin.video.redlight'):
 	import time
 	import sqlite3 as database
