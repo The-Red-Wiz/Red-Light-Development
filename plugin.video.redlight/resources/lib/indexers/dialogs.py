@@ -80,7 +80,6 @@ def language_invoker_choice(params):
 	new_xml = str(root.toxml()).replace('<?xml version="1.0" ?>', '')
 	with open(addon_xml, 'w') as f: f.write(new_xml)
 	set_setting('reuse_language_invoker', new_value)
-	kodi_utils.execute_builtin('ActivateWindow(Home)', True)
 	kodi_utils.update_local_addons()
 	kodi_utils.disable_enable_addon()
 
@@ -104,9 +103,10 @@ def addon_icon_choice(params):
 	with open(addon_xml, 'w') as f: f.write(new_xml)
 	set_setting('addon_icon_choice', new_icon_path)
 	set_setting('addon_icon_choice_name', new_icon)
-	kodi_utils.execute_builtin('ActivateWindow(Home)', True)
+	icon_path = kodi_utils.translate_path(os.path.join(kodi_utils.addon_info('path'), new_icon_path))
+	kodi_utils.set_property('redlight.addon_icon', icon_path)
+	kodi_utils.set_property('redlight.addon_icon_mini', os.path.join(kodi_utils.addon_info('path'), 'resources', 'media', 'addon_icons', 'minis', new_icon))
 	kodi_utils.update_local_addons()
-	kodi_utils.disable_enable_addon()
 
 def rescrape_actions_choice(params):
 	set_focus = params.get('set_focus', 0)

@@ -1286,10 +1286,24 @@ class Sources():
 
 	def _wait_player_idle(self, max_ms=8000):
 		try:
+			if kodi_utils.get_property(PROP_PLAY_OPENING) == 'true':
+				for _ in range(50):
+					if kodi_utils.get_property(PROP_PLAY_OPENING) != 'true':
+						break
+					kodi_utils.sleep(100)
+				if kodi_utils.get_property(PROP_PLAY_OPENING) == 'true':
+					return
 			player = kodi_utils.kodi_player()
+			try:
+				if not (player.isPlaying() or player.isPlayingVideo()):
+					return
+			except:
+				return
 			kodi_utils.execute_builtin('PlayerControl(Stop)', block=True)
 			stable_idle = 0
 			for _ in range(max(1, max_ms // 100)):
+				if kodi_utils.get_property(PROP_PLAY_OPENING) == 'true':
+					return
 				playing = False
 				try:
 					playing = player.isPlaying() or player.isPlayingVideo()
@@ -1507,7 +1521,7 @@ class Sources():
 			self.playback_successful, self.cancel_all_playback = None, False
 			self._resolve_user_cancelled = False
 			self._prepare_resolve_ui()
-			defer_stop_for_nextep = self.background and self.autoplay_nextep
+			defer_stop_for_nextep = self.background and (self.autoplay_nextep or self.autoscrape_nextep)
 			if not defer_stop_for_nextep:
 				self._stop_active_playback()
 			retry_easynews = settings.easynews_playback_method('retry')

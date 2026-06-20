@@ -22,9 +22,7 @@ def routing(sys):
 		except Exception as e: kodi_utils.logger('routing', 'refresh widgets: %s' % e)
 	mode = params.get('mode', 'navigator.main')
 	if not external():
-		try:
-			if is_directory_listing_mode(mode): run_deferred_setup_background_if_needed()
-			else: run_deferred_setup_if_needed()
+		try: run_deferred_setup_if_needed()
 		except Exception as e: kodi_utils.logger('routing', 'deferred: %s' % e)
 	if 'navigator.' in mode:
 		from indexers.navigator import Navigator

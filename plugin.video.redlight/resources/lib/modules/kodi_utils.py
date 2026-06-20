@@ -438,7 +438,7 @@ def disable_enable_addon(addon_name='plugin.video.redlight'):
 def update_local_addons():
 	execute_builtin('UpdateLocalAddons', True)
 	sleep(2500)
- 
+
 def update_kodi_addons_db(addon_name='plugin.video.redlight'):
 	import time
 	import sqlite3 as database

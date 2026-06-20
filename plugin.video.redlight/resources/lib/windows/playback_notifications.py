@@ -105,10 +105,12 @@ class StillWatching(BaseDialog):
 		self.meta = kwargs.get('meta')
 		self.check_text = kwargs.get('check_text')
 		self.heading = kwargs.get('heading') or 'Still Watching?'
-		self.right_align = kwargs.get('right_align', 'false')
+		right_align = kwargs.get('right_align', 'false')
+		self.compact_confirm = str(right_align).lower() in ('true', '1', 'yes')
 		self.set_properties()
 
 	def onInit(self):
+		self.set_properties()
 		self.setFocusId(10)
 		Thread(target=self.monitor, daemon=True).start()
 
@@ -120,7 +122,7 @@ class StillWatching(BaseDialog):
 
 	def onAction(self, action):
 		if action in self.closing_actions:
-			self.selected = 'no'
+			self.selected = False
 			self.closed = True
 			self.close()
 
@@ -131,14 +133,31 @@ class StillWatching(BaseDialog):
 
 	def set_properties(self):
 		landscape, fanart, clearlogo = self.meta.get('landscape', ''), self.meta.get('fanart', ''), self.meta.get('clearlogo', '')
-		self.setProperty('mode', 'still_watching')
-		self.setProperty('thumb', landscape or fanart)
-		if not landscape: self.setProperty('clearlogo', clearlogo)
+		self.setProperty('mode', 'autoscrape_confirm' if self.compact_confirm else 'still_watching')
+		if self.compact_confirm:
+			if avoid_episode_spoilers() and int(self.meta.get('playcount', '0')) == 0:
+				thumb = fanart or addon_fanart()
+			else:
+				thumb = self.meta.get('ep_thumb') or fanart or addon_fanart()
+			self.setProperty('thumb', thumb)
+			self.setProperty('clearlogo', clearlogo)
+			self.setProperty('episode_label', '%s[B] | [/B]%02dx%02d[B] | [/B]%s' % (
+				self.meta['title'], self.meta['season'], self.meta['episode'], self.meta.get('ep_name', '')))
+		else:
+			self.setProperty('thumb', landscape or fanart)
+			if not landscape: self.setProperty('clearlogo', clearlogo)
+			self.setProperty('episode_label', self.check_text % self.meta['title'])
 		self.setProperty('still_watching_heading', self.heading)
-		self.setProperty('right_align', self.right_align)
-		self.setProperty('episode_label', self.check_text % self.meta['title'])
+		if self.compact_confirm: self.setProperty('pause_timer', '')
 
 	def monitor(self):
+		if self.compact_confirm:
+			try:
+				while not self.closed:
+					self.sleep(200)
+			except:
+				pass
+			return
 		pause_timer = 10
 		try:
 			while self.player.isPlaying() and not self.closed:

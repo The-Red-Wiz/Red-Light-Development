@@ -307,13 +307,7 @@ def refresh_widgets_after_db_migration():
 	schedule_widget_refresh_once(reload_skin=True)
 
 def run_deferred_setup_if_needed():
-	if kodi_utils.get_property(_DEFERRED_SETUP_DONE) == 'true': return
-	kodi_utils.set_property(_DEFERRED_SETUP_DONE, 'true')
-	try:
-		from service import run_deferred_service_setup
-		run_deferred_service_setup()
-	except Exception as e:
-		kodi_utils.logger('run_deferred_setup_if_needed', str(e))
+	run_deferred_setup_background_if_needed()
 
 def run_deferred_setup_background_if_needed():
 	if kodi_utils.get_property(_DEFERRED_SETUP_DONE) == 'true': return

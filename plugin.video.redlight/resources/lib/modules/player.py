@@ -10,6 +10,7 @@ from modules import kodi_utils as ku, settings as st, watched_status as ws
 
 PROP_RESOLVE_CANCEL = 'redlight.resolve_cancelled'
 PROP_PLAY_OPENING = 'redlight.play_opening'
+PROP_NEXTEP_PENDING = 'redlight.nextep_pending'
 
 class RedLightPlayer(xbmc.Player):
 	def __init__ (self):
@@ -198,6 +199,9 @@ class RedLightPlayer(xbmc.Player):
 					ku.sleep(1000)
 					try: self.total_time, self.curr_time = self.getTotalTime(), self.getTime()
 					except: ku.sleep(250); continue
+					if not self._valid_playback_duration(self.total_time, self.curr_time):
+						ku.sleep(250)
+						continue
 					self.current_point = round(float(self.curr_time/self.total_time * 100), 1)
 					if self.current_point >= 90:
 						if play_random_continual: self.run_random_continual(); break
@@ -205,7 +209,7 @@ class RedLightPlayer(xbmc.Player):
 					if self.media_type == 'episode':
 						if self.autoplay_nextep or self.autoscrape_nextep:
 							if not self.nextep_info_gathered: self.info_next_ep()
-							if round(self.total_time - self.curr_time) <= self.start_prep: self.run_next_ep(); break
+							if self._should_prep_next_ep(): self._schedule_next_ep(); break
 					elif show_stinger and not self.movie_stingers_run: 
 						final_chapter = (self.final_chapter(75) or stingers_percentage_fallback) if stinger_use_chapters else stingers_percentage_fallback
 						if self.current_point >= final_chapter: self.run_movie_stingers()
@@ -320,6 +324,48 @@ class RedLightPlayer(xbmc.Player):
 	def run_media_progress(self, function, params):
 		try: function(params)
 		except: pass
+
+	def _valid_playback_duration(self, total_time=None, curr_time=None):
+		try:
+			total = total_time if total_time is not None else self.getTotalTime()
+			curr = curr_time if curr_time is not None else self.getTime()
+			if total in (0, 0.0, '0.0', '', None): return False
+			if curr in (0, 0.0, '0.0', '', None): return False
+			if float(total) < 60: return False
+			return float(curr) > 0
+		except:
+			return False
+
+	def _should_prep_next_ep(self):
+		if ku.get_property(PROP_NEXTEP_PENDING) == 'true':
+			return False
+		if not self._valid_playback_duration(self.total_time, self.curr_time):
+			return False
+		try:
+			remaining = round(float(self.total_time) - float(self.curr_time))
+		except:
+			return False
+		return remaining > 0 and remaining <= self.start_prep
+
+	def _schedule_next_ep(self):
+		if ku.get_property(PROP_NEXTEP_PENDING) == 'true':
+			return
+		ku.set_property(PROP_NEXTEP_PENDING, 'true')
+		meta = dict(self.meta)
+		nextep_settings = dict(self.nextep_settings)
+		player = self
+		def _worker():
+			try:
+				if not player.media_marked:
+					player.media_watched_marker(force_watched=True)
+				ku.clear_property(PROP_NEXTEP_PENDING)
+				from modules.episode_tools import EpisodeTools
+				EpisodeTools(meta, nextep_settings).auto_nextep()
+			except:
+				pass
+			finally:
+				ku.clear_property(PROP_NEXTEP_PENDING)
+		Thread(target=_worker, daemon=True).start()
 
 	def run_next_ep(self):
 		from modules.episode_tools import EpisodeTools
