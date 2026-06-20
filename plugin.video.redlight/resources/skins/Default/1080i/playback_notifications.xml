@@ -72,7 +72,7 @@
                     <left>80</left>
                     <aligny>center</aligny>
                     <height>40</height>
-                    <label>[B]Next Episode In $INFO[Player.TimeRemaining()][/B]</label>
+                    <label>[B]Next Episode In $INFO[Window.Property(nextep_remaining)][/B]</label>
                     <font>font14</font> <!-- REDLIGHT_33 -->
                     <textcolor>FFB7B4BB</textcolor>
                 </control>
