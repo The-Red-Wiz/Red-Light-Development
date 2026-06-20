@@ -1,3 +1,6 @@
+[COLOR red][B]Version 1.3.7[/B][/COLOR]
+- Results: optional Tint Focused Result Background (off by default) tints the focused row using your provider/quality highlight color; Results Background Opacity (20%-80%) when enabled. Credits and with thanks: Polgara01 (#13).
+
 [COLOR red][B]Version 1.3.6[/B][/COLOR]
 - Fixed My Lists failing to open when a saved menu still used the old navigator.my_content route (alias plus one-time menu migration).
 - Simkl: single Simkl Lists entry under My Lists (removed duplicate Simkl My Content menu).

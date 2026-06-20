@@ -953,6 +953,15 @@ def clear_favorites_choice(params):
 	favorites_cache.clear_favorites(media_type)
 	kodi_utils.notification('Success', 3000)
 
+def highlight_background_opacity_choice(params):
+	choices = [('20%', '33'), ('30%', '4D'), ('40%', '66'), ('50%', '80'), ('60%', '99'), ('70%', 'B3'), ('80%', 'CC')]
+	list_items = [{'line1': item[0]} for item in choices]
+	kwargs = {'items': json.dumps(list_items), 'narrow_window': 'true'}
+	choice = kodi_utils.select_dialog(choices, **kwargs)
+	if choice is None: return
+	set_setting('highlight.background_opacity_name', choice[0])
+	set_setting('highlight.background_opacity', choice[1])
+
 def scraper_color_choice(params):
 	setting = params.get('setting_id')
 	current_setting, original_highlight = get_setting('redlight.%s' % setting), default_setting_values(setting)['setting_default']

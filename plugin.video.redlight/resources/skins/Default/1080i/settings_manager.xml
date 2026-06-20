@@ -3156,6 +3156,23 @@
                           <property name="setting_description">Choose Single color for all results</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=scraper_color_choice&amp;setting_id=scraper_single_highlight)</onclick>
                       </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(70)</visible>
+                          <property name="setting_label">Tint Focused Result Background</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.highlight.tint_focused_background)]</property>
+                          <property name="setting_description">Tint the focused result row background using your highlight color instead of the default grey</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=highlight.tint_focused_background)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(70)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.highlight.tint_focused_background),true)</visible>
+                          <property name="setting_label">    - Results Background Opacity</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.highlight.background_opacity_name)]</property>
+                          <property name="setting_description">Choose the opacity applied to the focused result background when tinting is enabled</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=highlight_background_opacity_choice)</onclick>
+                      </item>
 <!-- PLAYBACK 80 -->
         <!-- Playback Movies -->
                       <item>
