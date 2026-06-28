@@ -301,9 +301,11 @@ def autoplay_skip_intro_mode():
 def autoplay_skip_intro_enabled(play_type):
 	if autoplay_skip_intro_mode() == 0:
 		return False
-	if play_type != 'autoplay_nextep':
-		return False
-	return autoplay_next_episode()
+	if play_type == 'autoplay_nextep':
+		return autoplay_next_episode()
+	if play_type == 'autoscrape_nextep':
+		return autoscrape_next_episode()
+	return False
 
 def autoplay_skip_intro_auto(play_type):
 	return autoplay_skip_intro_enabled(play_type) and autoplay_skip_intro_mode() == 2

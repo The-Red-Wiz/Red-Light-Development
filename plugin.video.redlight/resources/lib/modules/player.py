@@ -434,17 +434,10 @@ class RedLightPlayer(xbmc.Player):
 		return int(pop_at) + pipeline
 
 	def _resolve_subtitle_pop_at(self, sub_tail, credits_entry):
-		# Umbrella playnext: alert when remaining < subtitletime OR remaining < playnext.min.seconds (20).
-		# When dialogue ends well before EOF (credits tail in subs), anchor at credits entry not last cue.
-		if sub_tail is None and credits_entry is None: return None
-		tail = min(int(sub_tail), st.NEXTEP_ALERT_MAX_REMAINING_SEC) if sub_tail is not None else None
-		if credits_entry is not None and tail is not None and int(credits_entry) > int(tail) + st.NEXTEP_CREDITS_ENTRY_GAP_SEC:
-			return int(credits_entry)
-		if credits_entry is not None and tail is None:
-			return int(credits_entry)
-		if tail is not None:
-			return max(int(tail), st.NEXTEP_ALERT_MIN_REMAINING_SEC)
-		return None
+		# subtitles.py returns the target remaining seconds; do not clamp to NEXTEP_ALERT_MAX (that cap is for % fallback only).
+		vals = [int(v) for v in (sub_tail, credits_entry) if v is not None]
+		if not vals: return None
+		return max(max(vals), st.NEXTEP_ALERT_MIN_REMAINING_SEC)
 
 	def _subtitle_credits_entry_remaining(self, fetch=False, quiet=False):
 		if getattr(self, 'is_generic', False) or not getattr(self, 'imdb_id', None): return None

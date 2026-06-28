@@ -7,9 +7,11 @@ from modules import kodi_utils as ku, settings as st
 
 timeout = 20.0
 _ALERT_SUB_MAX_REMAINING = 600
-# When the last .srt cue ends long before EOF, assume an unsubtitled credits tail and aim pre-credits.
-_SUBS_UNSUBTITLED_TAIL_SEC = 90
+# When dialogue ends long before EOF, scan the final window for the first music/SFX cue (credits roll).
+# Short tails (<60s) use seconds after last dialogue/cue directly.
+_SUBS_UNSUBTITLED_TAIL_SEC = 60
 _SUBS_PRE_CREDITS_REMAINING_SEC = 20
+_SUBS_FINAL_TAIL_SCAN_SEC = 65
 _SUB_EXTS = ('.srt', '.ass', '.ssa', '.sub', '.vtt')
 _ACTIVE_SUB_PROP = 'redlight.active_subtitle_path'
 _SUBMAKER_SKIP_LANGS = frozenset(('sub toolbox',))
@@ -307,10 +309,11 @@ def _subtitle_cue_text_is_junk(text):
 	text = re.sub(r'<[^>]+>', '', text or '').strip()
 	if not text: return True
 	if _SUBS_CREDITS_JUNK_RE.search(text): return True
+	if re.search(r'[♪♫]', text): return True
+	if re.search(r'\b(music|instrumental|orchestral)\b', text, re.I): return True
 	if re.fullmatch(r'[\s♪♫\(\)\[\]\-\*\.!]+', text): return True
 	if re.fullmatch(r'\([^)]+\)', text): return True
 	if re.fullmatch(r'\[[^\]]+\]', text): return True
-	if '♪' in text and len(re.sub(r'[^a-zA-Z]', '', text)) < 4: return True
 	return False
 
 def _subtitle_cue_end_from_time_line(line):
@@ -318,6 +321,53 @@ def _subtitle_cue_end_from_time_line(line):
 	if not match: return None
 	h, m, s, ms = match.groups()
 	return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000.0
+
+def _subtitle_cue_start_from_time_line(line):
+	match = re.search(r'(\d{2}):(\d{2}):(\d{2})[,\.](\d{3})\s*-->', line)
+	if not match: return None
+	h, m, s, ms = match.groups()
+	return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000.0
+
+def _subtitle_first_junk_start_after(content, min_start_seconds):
+	first_start = None
+	for block in re.split(r'\n\s*\n', content.strip()):
+		lines = [line.strip() for line in block.splitlines() if line.strip()]
+		if len(lines) < 2: continue
+		start_seconds = None
+		text_lines = []
+		for line in lines:
+			if '-->' in line:
+				start_seconds = _subtitle_cue_start_from_time_line(line)
+			elif not line.isdigit():
+				text_lines.append(line)
+		if start_seconds is None or start_seconds < min_start_seconds: continue
+		if not _subtitle_cue_text_is_junk(' '.join(text_lines)): continue
+		if first_start is None or start_seconds < first_start:
+			first_start = start_seconds
+	return first_start
+
+def _subtitle_alert_remaining_seconds(total_time, content):
+	dialogue_end = _subtitle_last_dialogue_end_seconds(content)
+	if dialogue_end is None:
+		end_seconds = _subtitle_last_end_seconds(content)
+		if end_seconds is None: return None
+		return _alert_remaining_from_last_cue(total_time, end_seconds)
+	gap = float(total_time) - float(dialogue_end)
+	if gap < _SUBS_UNSUBTITLED_TAIL_SEC:
+		return _bounded_alert_remaining(gap)
+	window_start = float(total_time) - _SUBS_FINAL_TAIL_SCAN_SEC
+	junk_start = _subtitle_first_junk_start_after(content, window_start)
+	if junk_start is not None:
+		remaining = float(total_time) - junk_start
+		if remaining < 0 or remaining > _ALERT_SUB_MAX_REMAINING: return None
+		return int(remaining)
+	return _SUBS_PRE_CREDITS_REMAINING_SEC
+
+def _bounded_alert_remaining(remaining):
+	try: remaining = float(remaining)
+	except: return None
+	if remaining < 0 or remaining > _ALERT_SUB_MAX_REMAINING: return None
+	return int(remaining)
 
 def _subtitle_last_dialogue_end_seconds(content):
 	blocks = re.split(r'\n\s*\n', content.strip())
@@ -335,9 +385,12 @@ def _subtitle_last_dialogue_end_seconds(content):
 		if not _subtitle_cue_text_is_junk(' '.join(text_lines)): return end_seconds
 	return None
 
-def _credits_entry_remaining_from_dialogue(total_time, dialogue_end):
-	remaining = float(total_time) - float(dialogue_end)
+def _subs_alert_remaining_before_eof(remaining):
+	try: remaining = float(remaining)
+	except: return None
 	if remaining < 0 or remaining > _ALERT_SUB_MAX_REMAINING: return None
+	if remaining >= _SUBS_UNSUBTITLED_TAIL_SEC:
+		remaining = _SUBS_PRE_CREDITS_REMAINING_SEC
 	return int(remaining)
 
 def _raw_remaining_from_last_cue(total_time, last_cue_end):
@@ -346,20 +399,16 @@ def _raw_remaining_from_last_cue(total_time, last_cue_end):
 	return int(remaining)
 
 def _alert_remaining_from_last_cue(total_time, last_cue_end):
-	remaining = float(total_time) - float(last_cue_end)
-	if remaining < 0 or remaining > _ALERT_SUB_MAX_REMAINING: return None
-	if remaining > _SUBS_UNSUBTITLED_TAIL_SEC:
-		remaining = _SUBS_PRE_CREDITS_REMAINING_SEC
-	return int(remaining)
+	return _subs_alert_remaining_before_eof(float(total_time) - float(last_cue_end))
 
 def _seconds_remaining_before_end(sub_path, total_time, for_alert=False, credits_entry=False):
 	try:
 		with ku.open_file(sub_path) as file: content = file.read()
 		if not _looks_like_subtitle_content(content): return None
-		if credits_entry:
-			dialogue_end = _subtitle_last_dialogue_end_seconds(content)
-			if dialogue_end is None: return None
-			return _credits_entry_remaining_from_dialogue(total_time, dialogue_end)
+		if credits_entry or for_alert:
+			remaining = _subtitle_alert_remaining_seconds(total_time, content)
+			if remaining is not None: return remaining
+			if credits_entry: return None
 		end_seconds = _subtitle_last_end_seconds(content)
 		if end_seconds is None: return None
 		if for_alert: return _alert_remaining_from_last_cue(total_time, end_seconds)
