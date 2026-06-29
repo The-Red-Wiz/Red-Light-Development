@@ -508,12 +508,15 @@ def limit_number_total_choice(params):
 
 def external_scraper_choice(params):
 	from modules.utils import append_module_to_syspath, manual_function_import
+	try: slot = int(params.get('slot', '1'))
+	except: slot = 1
+	slot = max(1, min(slot, settings.EXTERNAL_SCRAPER_SLOT_COUNT))
 	try:
 		results = kodi_utils.jsonrpc_get_addons('xbmc.python.module')
 		results = [i for i in results if kodi_utils.addon_enabled(i['addonid'])]
 	except: return
 	list_items = [{'line1': i['name'], 'icon': i['thumbnail']} for i in results]
-	kwargs = {'items': json.dumps(list_items)}
+	kwargs = {'items': json.dumps(list_items), 'heading': 'External Scraper Slot %d' % slot}
 	choice = kodi_utils.select_dialog(results, **kwargs)
 	if choice == None: return
 	module_id, module_name = choice['addonid'], choice['name']
@@ -526,14 +529,40 @@ def external_scraper_choice(params):
 	except: pass
 	if success:
 		try:
-			set_setting('external_scraper.module', module_id)
-			set_setting('external_scraper.name', module_name)
+			settings.set_external_scraper_slot(slot, module_id, module_name, enable=True)
 			set_setting('provider.external', 'true')
-			kodi_utils.ok_dialog(text='Success.[CR][B]%s[/B] set as External Scraper' % module_name)
+			kodi_utils.ok_dialog(text='Success.[CR][B]%s[/B] set as External Scraper slot %d' % (module_name, slot))
+			try:
+				from caches.settings_cache import refresh_settings_manager_properties
+				refresh_settings_manager_properties()
+			except: pass
 		except: kodi_utils.ok_dialog(text='Error')
 	else:
 		kodi_utils.ok_dialog(text='The [B]%s[/B] Module is not compatible.[CR]Please choose a different Module...' % module_name.upper())
 		return external_scraper_choice(params)
+
+def external_scraper_clear_slot(params):
+	try: slot = int(params.get('slot', '1'))
+	except: return
+	slot = max(1, min(slot, settings.EXTERNAL_SCRAPER_SLOT_COUNT))
+	settings.set_external_scraper_slot(slot, '', '', enable=False)
+	try:
+		from caches.settings_cache import refresh_settings_manager_properties
+		refresh_settings_manager_properties()
+	except: pass
+
+def external_scraper_move_slot(params):
+	try:
+		slot = int(params.get('slot', '1'))
+		direction = params.get('direction', 'up')
+	except: return
+	target = slot - 1 if direction == 'up' else slot + 1
+	if target < 1 or target > settings.EXTERNAL_SCRAPER_SLOT_COUNT: return
+	settings.swap_external_scraper_slots(slot, target)
+	try:
+		from caches.settings_cache import refresh_settings_manager_properties
+		refresh_settings_manager_properties()
+	except: pass
 
 def audio_filters_choice(params={}):
 	from modules.source_utils import audio_filter_choices

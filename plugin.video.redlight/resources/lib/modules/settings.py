@@ -225,6 +225,31 @@ def opensubs_configured():
 def subs_alert_fetch_configured():
 	return submaker_manifest_configured() or opensubs_configured()
 
+def alert_timing_options(next_episode=False):
+	options = {'0': 'Playback Percentage', '1': 'Chapter Info', '2': 'Subtitles Info'}
+	if next_episode:
+		options['3'] = 'IntroDB Info'
+	if not subs_alert_fetch_configured():
+		options.pop('2', None)
+	return options
+
+def refresh_alert_timing_settings():
+	from caches.settings_cache import get_setting, set_setting, settings_cache
+	settings_cache.clear_db_cache()
+	changed = False
+	for setting_id in ('stinger_alert.alert_timing', 'autoplay_alert_timing', 'autoscrape_alert_timing'):
+		opts = alert_timing_options(next_episode=(setting_id != 'stinger_alert.alert_timing'))
+		current = str(get_setting('redlight.%s' % setting_id, '1'))
+		if current not in opts:
+			fallback = '1' if '1' in opts else '0'
+			set_setting(setting_id, fallback)
+			current = fallback
+			changed = True
+		try:
+			settings_cache.set_memory_cache('%s_name' % setting_id, opts.get(current, ''))
+		except: pass
+	return changed
+
 def submaker_language():
 	return get_setting('redlight.playback.submaker_language_name', 'English')
 
@@ -274,7 +299,7 @@ def stingers_show():
 
 def _alert_timing_mode(setting_id, default='1'):
 	value = get_setting('redlight.%s' % setting_id, default)
-	return {'0': 'off', '1': 'chapters', '2': 'subtitles'}.get(str(value), 'chapters')
+	return {'0': 'off', '1': 'chapters', '2': 'subtitles', '3': 'introdb'}.get(str(value), 'chapters')
 
 def stingers_alert_timing():
 	return _alert_timing_mode('stinger_alert.alert_timing', '1')
@@ -295,20 +320,41 @@ def autoplay_next_episode():
 	if auto_play('episode') and get_setting('redlight.autoplay_next_episode', 'false') == 'true': return True
 	else: return False
 
-def autoplay_skip_intro_mode():
+def skip_intro_mode():
 	return int(get_setting('redlight.autoplay_skip_intro', '0'))
 
-def autoplay_skip_intro_enabled(play_type):
-	if autoplay_skip_intro_mode() == 0:
+def skip_intro_all_episodes():
+	return get_setting('redlight.skip_intro_all_episodes', 'true') == 'true'
+
+def _skip_intro_chain_play_type(play_type):
+	return play_type in ('autoplay_nextep', 'autoscrape_nextep', 'random_continual')
+
+def skip_intro_enabled(play_type):
+	if skip_intro_mode() == 0:
 		return False
-	if play_type == 'autoplay_nextep':
-		return autoplay_next_episode()
-	if play_type == 'autoscrape_nextep':
-		return autoscrape_next_episode()
+	if _skip_intro_chain_play_type(play_type):
+		return True
+	return skip_intro_all_episodes()
+
+def skip_intro_auto_approved(play_type):
+	return skip_intro_mode() == 2 and _skip_intro_chain_play_type(play_type)
+
+def skip_intro_needs_prompt(play_type):
+	mode = skip_intro_mode()
+	if mode == 1:
+		return True
+	if mode == 2 and not _skip_intro_chain_play_type(play_type):
+		return True
 	return False
 
+def autoplay_skip_intro_mode():
+	return skip_intro_mode()
+
+def autoplay_skip_intro_enabled(play_type):
+	return skip_intro_enabled(play_type)
+
 def autoplay_skip_intro_auto(play_type):
-	return autoplay_skip_intro_enabled(play_type) and autoplay_skip_intro_mode() == 2
+	return skip_intro_auto_approved(play_type)
 
 def autoscrape_next_episode():
 	if not auto_play('episode') and get_setting('redlight.autoscrape_next_episode', 'false') == 'true': return True
@@ -337,6 +383,7 @@ NEXTEP_AUTOSCRAPE_MIN_HEADROOM_SEC = 90
 NEXTEP_ALERT_MAX_REMAINING_SEC = 20
 NEXTEP_ALERT_MIN_REMAINING_SEC = 20
 NEXTEP_CREDITS_ENTRY_GAP_SEC = 15
+NEXTEP_INTRODB_BUFFER_SEC = 5
 NEXTEP_STOP_NOTIFY_REMAINING_SEC = 90
 
 def nextep_pipeline_headroom(play_type, scraper_time, still_watching_due=False):
@@ -498,11 +545,11 @@ def tv_progress_location():
 	return int(get_setting('redlight.tv_progress_location', '0'))
 
 def check_prescrape_sources(scraper, media_type):
-	if scraper in ('easynews', 'aiostreams', 'rd_cloud', 'pm_cloud', 'ad_cloud', 'oc_cloud', 'tb_cloud', 'folders'):
-		if get_setting('redlight.check.%s' % scraper) == 'true': return True
-		if scraper == 'easynews' and autoplay_prescrape('easynews'): return True
-		if scraper in ('rd_cloud', 'pm_cloud', 'ad_cloud', 'oc_cloud', 'tb_cloud') and autoplay_prescrape(scraper): return True
-		return False
+	"""Prescrape only when Check Before Full Search is enabled for that provider."""
+	if scraper in ('easynews', 'aiostreams', 'rd_cloud', 'pm_cloud', 'ad_cloud', 'oc_cloud', 'tb_cloud'):
+		return get_setting('redlight.check.%s' % scraper) == 'true'
+	if scraper == 'folders':
+		return get_setting('redlight.check.folders') == 'true'
 	if get_setting('redlight.check.%s' % scraper) == 'true' and auto_play(media_type):
 		return True
 	return False
@@ -525,7 +572,96 @@ def cloud_scrape_before_external(scraper):
 		return get_setting('redlight.%s' % cloud_scrapers[scraper]) == 'true'
 	return False
 
+EXTERNAL_SCRAPER_SLOT_COUNT = 3
+
+def _external_slot_setting(slot, field):
+	return 'external_scraper.slot%d.%s' % (int(slot), field)
+
+def external_scraper_slot_data(slot):
+	module = get_setting('redlight.%s' % _external_slot_setting(slot, 'module'), 'empty_setting')
+	name = get_setting('redlight.%s' % _external_slot_setting(slot, 'name'), 'empty_setting')
+	enabled = get_setting('redlight.%s' % _external_slot_setting(slot, 'enabled'), 'false') == 'true'
+	if module in ('empty_setting', ''):
+		return {'slot': int(slot), 'module': '', 'name': '', 'enabled': False, 'folder_name': ''}
+	return {'slot': int(slot), 'module': module, 'name': name, 'enabled': enabled, 'folder_name': module.split('.')[-1]}
+
+def external_scraper_max_slots_options():
+	return {'0': 'All Enabled', '1': 'Top 1', '2': 'Top 2', '3': 'Top 3'}
+
+def external_scraper_max_slots():
+	value = get_setting('redlight.external_scraper.max_slots', '0')
+	try: limit = int(value)
+	except: limit = 0
+	return 0 if limit <= 0 else min(limit, EXTERNAL_SCRAPER_SLOT_COUNT)
+
+def external_scraper_cache_key(module_id, provider):
+	return '%s::%s' % (module_id, provider)
+
+def active_external_modules():
+	modules = []
+	for slot in range(1, EXTERNAL_SCRAPER_SLOT_COUNT + 1):
+		data = external_scraper_slot_data(slot)
+		if not data['module'] or not data['enabled']: continue
+		display = data['name'] if data['name'] not in ('empty_setting', '') else data['folder_name']
+		modules.append({'slot': slot, 'module_id': data['module'], 'folder_name': data['folder_name'], 'display_name': display})
+	limit = external_scraper_max_slots()
+	if limit and len(modules) > limit:
+		modules = modules[:limit]
+	return modules
+
+def any_external_scraper_configured():
+	for slot in range(1, EXTERNAL_SCRAPER_SLOT_COUNT + 1):
+		if external_scraper_slot_data(slot)['module']: return True
+	module = get_setting('redlight.external_scraper.module', 'empty_setting')
+	return module not in ('empty_setting', '')
+
+def _sync_legacy_external_scraper_from_slot(slot=1):
+	data = external_scraper_slot_data(slot)
+	if data['module']:
+		set_setting('external_scraper.module', data['module'])
+		set_setting('external_scraper.name', data['name'] or data['folder_name'])
+	else:
+		set_setting('external_scraper.module', 'empty_setting')
+		set_setting('external_scraper.name', 'empty_setting')
+
+def set_external_scraper_slot(slot, module_id, module_name, enable=True):
+	slot = int(slot)
+	set_setting(_external_slot_setting(slot, 'module'), module_id or 'empty_setting')
+	set_setting(_external_slot_setting(slot, 'name'), module_name or 'empty_setting')
+	set_setting(_external_slot_setting(slot, 'enabled'), 'true' if enable and module_id else 'false')
+	if slot == 1: _sync_legacy_external_scraper_from_slot(1)
+
+def swap_external_scraper_slots(slot_a, slot_b):
+	slot_a, slot_b = int(slot_a), int(slot_b)
+	if slot_a == slot_b: return
+	fields = ('module', 'name', 'enabled')
+	values = {}
+	for slot in (slot_a, slot_b):
+		values[slot] = {field: get_setting('redlight.%s' % _external_slot_setting(slot, field)) for field in fields}
+	for field in fields:
+		set_setting(_external_slot_setting(slot_a, field), values[slot_b][field] or ('false' if field == 'enabled' else 'empty_setting'))
+		set_setting(_external_slot_setting(slot_b, field), values[slot_a][field] or ('false' if field == 'enabled' else 'empty_setting'))
+	_sync_legacy_external_scraper_from_slot(1)
+
+def migrate_external_scraper_slots_for_upgrade(had_existing_settings):
+	if not had_existing_settings: return False
+	if get_setting('redlight.migration.external_scraper_slots_v160', 'false') == 'true': return False
+	migrated = False
+	slot1 = external_scraper_slot_data(1)
+	if not slot1['module']:
+		legacy_module = get_setting('redlight.external_scraper.module', 'empty_setting')
+		legacy_name = get_setting('redlight.external_scraper.name', 'empty_setting')
+		if legacy_module not in ('empty_setting', ''):
+			set_external_scraper_slot(1, legacy_module, legacy_name, enable=get_setting('redlight.provider.external', 'false') == 'true')
+			migrated = True
+	set_setting('migration.external_scraper_slots_v160', 'true')
+	return True if migrated else False
+
 def external_scraper_info():
+	modules = active_external_modules()
+	if modules:
+		entry = modules[0]
+		return entry['module_id'], entry['folder_name']
 	module = get_setting('redlight.external_scraper.module')
 	if module in ('empty_setting', ''): return None, ''
 	return module, module.split('.')[-1]

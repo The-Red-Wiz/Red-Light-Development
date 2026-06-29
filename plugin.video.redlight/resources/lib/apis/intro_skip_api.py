@@ -5,8 +5,42 @@ from caches.main_cache import main_cache
 THEINTRODB_URL = 'https://api.theintrodb.org/v3/media'
 INTRODB_URL = 'https://api.introdb.app/segments'
 _CACHE_HOURS = 168
+_API_TIMEOUT = 6
 _MIN_SEGMENT_SEC = 3
 _MAX_SEGMENT_SEC = 600
+
+
+def _intro_cache_key(tmdb_id, imdb_id, season, episode):
+	return 'intro_skip_%s_%s_%s_%s' % (tmdb_id, imdb_id or '', season, episode)
+
+
+def _outro_cache_key(tmdb_id, imdb_id, season, episode):
+	return 'outro_credits_%s_%s_%s_%s' % (tmdb_id, imdb_id or '', season, episode)
+
+
+def peek_intro_segment_cache(tmdb_id, imdb_id, season, episode):
+	try:
+		season, episode = int(season), int(episode)
+	except:
+		return '__miss__'
+	cached = main_cache.get(_intro_cache_key(tmdb_id, imdb_id, season, episode))
+	if cached is None:
+		return '__miss__'
+	return cached or None
+
+
+def prefetch_intro_segment(tmdb_id, imdb_id, season, episode, duration_sec=None):
+	try:
+		resolve_intro_segment(tmdb_id, imdb_id, season, episode, duration_sec)
+	except:
+		pass
+
+
+def prefetch_credits_start(tmdb_id, imdb_id, season, episode, duration_sec=None):
+	try:
+		resolve_credits_start_sec(tmdb_id, imdb_id, season, episode, duration_sec)
+	except:
+		pass
 
 
 def resolve_intro_segment(tmdb_id, imdb_id, season, episode, duration_sec=None):
@@ -14,17 +48,52 @@ def resolve_intro_segment(tmdb_id, imdb_id, season, episode, duration_sec=None):
 		season, episode = int(season), int(episode)
 	except:
 		return None
-	cache_key = 'intro_skip_%s_%s_%s_%s' % (tmdb_id, imdb_id or '', season, episode)
+	cache_key = _intro_cache_key(tmdb_id, imdb_id, season, episode)
 	cached = main_cache.get(cache_key)
 	if cached is not None:
 		return cached or None
 	segment = None
 	if tmdb_id not in (None, '', 'None', '0000000'):
-		segment = _fetch_theintrodb(tmdb_id, season, episode, duration_sec)
+		segment = _fetch_theintrodb_intro(tmdb_id, season, episode, duration_sec)
 	if not segment and imdb_id not in (None, '', 'None', 'tt0000000'):
-		segment = _fetch_introdb(imdb_id, season, episode)
+		segment = _fetch_introdb_intro(imdb_id, season, episode)
 	main_cache.set(cache_key, segment or '', expiration=_CACHE_HOURS)
 	return segment
+
+
+def resolve_credits_start_sec(tmdb_id, imdb_id, season, episode, duration_sec=None):
+	try:
+		season, episode = int(season), int(episode)
+	except:
+		return None
+	cache_key = _outro_cache_key(tmdb_id, imdb_id, season, episode)
+	cached = main_cache.get(cache_key)
+	if cached is not None:
+		return cached or None
+	start_sec = None
+	if tmdb_id not in (None, '', 'None', '0000000'):
+		start_sec = _fetch_theintrodb_credits(tmdb_id, season, episode, duration_sec)
+	if start_sec is None and imdb_id not in (None, '', 'None', 'tt0000000'):
+		start_sec = _fetch_introdb_outro(imdb_id, season, episode, duration_sec)
+	main_cache.set(cache_key, start_sec if start_sec is not None else '', expiration=_CACHE_HOURS)
+	return start_sec
+
+
+def _valid_start_sec(start_sec, duration_sec=None):
+	try:
+		start_sec = float(start_sec)
+	except:
+		return None
+	if start_sec < 0:
+		return None
+	if duration_sec:
+		try:
+			total = float(duration_sec)
+			if total > 60 and start_sec > total:
+				return None
+		except:
+			pass
+	return start_sec
 
 
 def _valid_segment(start_sec, end_sec, duration_sec=None):
@@ -57,7 +126,19 @@ def _ms_segment(start_ms, end_ms, duration_sec=None):
 	return _valid_segment(start_ms / 1000.0, end_ms / 1000.0, duration_sec)
 
 
-def _fetch_theintrodb(tmdb_id, season, episode, duration_sec=None):
+def _parse_start_value(start_val, end_val=None):
+	if start_val is None:
+		return None
+	try:
+		start_sec = float(start_val)
+		if start_sec > 10000:
+			start_sec = start_sec / 1000.0
+		return start_sec
+	except:
+		return None
+
+
+def _fetch_theintrodb_intro(tmdb_id, season, episode, duration_sec=None):
 	try:
 		params = {'tmdb_id': str(tmdb_id), 'season': season, 'episode': episode}
 		if duration_sec:
@@ -65,7 +146,7 @@ def _fetch_theintrodb(tmdb_id, season, episode, duration_sec=None):
 				params['durationMs'] = int(float(duration_sec) * 1000)
 			except:
 				pass
-		response = requests.get(THEINTRODB_URL, params=params, timeout=8)
+		response = requests.get(THEINTRODB_URL, params=params, timeout=_API_TIMEOUT)
 		if response.status_code != 200:
 			return None
 		data = response.json()
@@ -81,29 +162,56 @@ def _fetch_theintrodb(tmdb_id, season, episode, duration_sec=None):
 		return None
 
 
-def _fetch_introdb(imdb_id, season, episode):
+def _fetch_introdb_intro(imdb_id, season, episode):
 	try:
 		params = {'imdb_id': str(imdb_id), 'season': season, 'episode': episode, 'segment_type': 'intro'}
-		response = requests.get(INTRODB_URL, params=params, timeout=8)
+		response = requests.get(INTRODB_URL, params=params, timeout=_API_TIMEOUT)
 		if response.status_code != 200:
 			return None
 		data = response.json()
 		intro = data.get('intro')
 		if not intro or not isinstance(intro, dict):
 			return None
-		start_sec = intro.get('start_sec', intro.get('start_ms'))
-		end_sec = intro.get('end_sec', intro.get('end_ms'))
-		if start_sec is not None and end_sec is not None:
-			try:
-				if float(start_sec) > 10000:
-					start_sec = float(start_sec) / 1000.0
-				if float(end_sec) > 10000:
-					end_sec = float(end_sec) / 1000.0
-			except:
-				pass
+		start_sec = _parse_start_value(intro.get('start_sec', intro.get('start_ms')))
+		end_sec = _parse_start_value(intro.get('end_sec', intro.get('end_ms')))
 		segment = _valid_segment(start_sec, end_sec)
 		if segment:
 			segment['source'] = 'introdb'
 		return segment
+	except:
+		return None
+
+
+def _fetch_introdb_outro(imdb_id, season, episode, duration_sec=None):
+	try:
+		params = {'imdb_id': str(imdb_id), 'season': season, 'episode': episode}
+		response = requests.get(INTRODB_URL, params=params, timeout=_API_TIMEOUT)
+		if response.status_code != 200:
+			return None
+		outro = response.json().get('outro') or {}
+		start_sec = _parse_start_value(outro.get('start_sec', outro.get('start_ms')))
+		return _valid_start_sec(start_sec, duration_sec)
+	except:
+		return None
+
+
+def _fetch_theintrodb_credits(tmdb_id, season, episode, duration_sec=None):
+	try:
+		params = {'tmdb_id': str(tmdb_id), 'season': season, 'episode': episode}
+		if duration_sec:
+			try:
+				params['durationMs'] = int(float(duration_sec) * 1000)
+			except:
+				pass
+		response = requests.get(THEINTRODB_URL, params=params, timeout=_API_TIMEOUT)
+		if response.status_code != 200:
+			return None
+		credits_list = response.json().get('credits') or []
+		if not credits_list:
+			return None
+		entry = credits_list[0]
+		if entry.get('start_ms') is None:
+			return None
+		return _valid_start_sec(int(entry['start_ms']) / 1000.0, duration_sec)
 	except:
 		return None

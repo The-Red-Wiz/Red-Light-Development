@@ -1816,22 +1816,172 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
-                          <property name="setting_label">Choose External Scrapers Module</property>
+                          <property name="setting_label">Max Scraper Modules Per Search</property>
                           <property name="setting_type">action</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.name)]</property>
-                          <property name="setting_description">Choose the external scraper module to use within Red Light. No support is provided when you choose to use external scrapers within Red Light</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_choice)</onclick>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.max_slots_name)]</property>
+                          <property name="setting_description">How many enabled external scraper modules to run per search. Slots are used in order (1, then 2, then 3). All enabled runs every configured slot in parallel with one shared timeout.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=external_scraper.max_slots)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.name),empty_setting)</visible>
-                          <property name="setting_label">Open External Scraper Settings</property>
+                          <property name="setting_label">External Scraper Slot 1</property>
+                          <property name="setting_type">separator</property>
+                          <onclick>noop</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot1.module),empty_setting)</visible>
+                          <property name="setting_label">Enable Slot 1</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.slot1.enabled)]</property>
+                          <property name="setting_description">Include this scraper module in source searches when enabled.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=external_scraper.slot1.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">Choose Module (Slot 1)</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.slot1.name)]</property>
+                          <property name="setting_description">Choose the external scraper module for slot 1 (e.g. Magneto, Gears, Chainscrapers).</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_choice&amp;slot=1)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot1.module),empty_setting)</visible>
+                          <property name="setting_label">Open Slot 1 Module Settings</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
-                          <property name="setting_description">Open the External Scraper settings. The settings of the module chosen above will be opened</property>
+                          <property name="setting_description">Open the settings for the scraper module assigned to slot 1.</property>
                           <onclick>back</onclick>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=open_external_scraper_settings)</onclick>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=open_external_scraper_settings&amp;slot=1)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot1.module),empty_setting)</visible>
+                          <property name="setting_label">Clear Slot 1</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Remove the scraper module from slot 1.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_clear_slot&amp;slot=1)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">External Scraper Slot 2</property>
+                          <property name="setting_type">separator</property>
+                          <onclick>noop</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.module),empty_setting)</visible>
+                          <property name="setting_label">Enable Slot 2</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.slot2.enabled)]</property>
+                          <property name="setting_description">Include this scraper module in source searches when enabled.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=external_scraper.slot2.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">Choose Module (Slot 2)</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.slot2.name)]</property>
+                          <property name="setting_description">Choose the external scraper module for slot 2.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_choice&amp;slot=2)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.module),empty_setting)</visible>
+                          <property name="setting_label">Open Slot 2 Module Settings</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Open the settings for the scraper module assigned to slot 2.</property>
+                          <onclick>back</onclick>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=open_external_scraper_settings&amp;slot=2)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.module),empty_setting)</visible>
+                          <property name="setting_label">Move Slot 2 Up</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Swap slot 2 with slot 1 (search order).</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_move_slot&amp;slot=2&amp;direction=up)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.module),empty_setting)</visible>
+                          <property name="setting_label">Clear Slot 2</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Remove the scraper module from slot 2.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_clear_slot&amp;slot=2)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">External Scraper Slot 3</property>
+                          <property name="setting_type">separator</property>
+                          <onclick>noop</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.module),empty_setting)</visible>
+                          <property name="setting_label">Enable Slot 3</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.slot3.enabled)]</property>
+                          <property name="setting_description">Include this scraper module in source searches when enabled.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=external_scraper.slot3.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <property name="setting_label">Choose Module (Slot 3)</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.slot3.name)]</property>
+                          <property name="setting_description">Choose the external scraper module for slot 3.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_choice&amp;slot=3)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.module),empty_setting)</visible>
+                          <property name="setting_label">Open Slot 3 Module Settings</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Open the settings for the scraper module assigned to slot 3.</property>
+                          <onclick>back</onclick>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=open_external_scraper_settings&amp;slot=3)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.module),empty_setting)</visible>
+                          <property name="setting_label">Move Slot 3 Up</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Swap slot 3 with slot 2 (search order).</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_move_slot&amp;slot=3&amp;direction=up)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.module),empty_setting)</visible>
+                          <property name="setting_label">Clear Slot 3</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">...</property>
+                          <property name="setting_description">Remove the scraper module from slot 3.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_clear_slot&amp;slot=3)</onclick>
                       </item>
         <!-- All Debrid -->
                      <item>
@@ -3319,7 +3469,7 @@
                           <property name="setting_label">    - Alert Timing Source</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.stinger_alert.alert_timing_name)]</property>
-                          <property name="setting_description">Choose when to show the Credit Stingers alert. Uses the percentage above, chapter markers, or subtitle timing. Falls back to Playback Percentage when unavailable</property>
+                          <property name="setting_description">Choose when to show the Credit Stingers alert. Uses the percentage above, chapter markers, or Subtitles Info when a SubMaker manifest URL and/or OpenSubtitles account is configured under Subtitles below. Subtitles Info follows cues in the subtitle file (not the on-screen credits roll), so timing can vary by episode. Falls back to Playback Percentage when unavailable</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=stinger_alert.alert_timing)</onclick>
                       </item>
         <!-- Playback Episodes -->
@@ -3348,6 +3498,32 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(80)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.auto_play_episode),true)</visible>
+                          <property name="setting_label">Limit Auto Play Quality</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.autoplay_quality_episode)]</property>
+                          <property name="setting_description">Choose the Quality properties allowed for autoplay results</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=set_quality_choice&amp;setting_id=autoplay_quality_episode)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(80)</visible>
+                          <property name="setting_label">Skip Intro</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.autoplay_skip_intro_name)]</property>
+                          <property name="setting_description">Skip TV intros via TheIntroDB then IntroDB, with embedded chapters as fallback. Prompt asks first. Plays you start yourself (single plays, etc) still prompt when Auto is selected.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=autoplay_skip_intro)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(80)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.autoplay_skip_intro),0)</visible>
+                          <property name="setting_label">    - Also On Plays You Start Yourself</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.skip_intro_all_episodes)]</property>
+                          <property name="setting_description">Apply Skip Intro to library and source-list plays (single plays, etc). Auto still prompts before skipping on those plays.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=skip_intro_all_episodes)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(80)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.auto_play_episode),false)</visible>
                           <property name="setting_label">Autoscrape Next Episode</property>
                           <property name="setting_type">boolean</property>
@@ -3370,17 +3546,8 @@
                           <property name="setting_label">    - Alert Timing Source</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.autoscrape_alert_timing_name)]</property>
-                          <property name="setting_description">Choose when to show the Next Episode alert. Uses the percentage above, chapter markers, or subtitle timing. Falls back to Playback Percentage when unavailable</property>
+                          <property name="setting_description">Choose when to show the Next Episode alert. Uses the percentage above, chapter markers, IntroDB Info (TheIntroDB credits then IntroDB outro), or Subtitles Info when a SubMaker manifest URL and/or OpenSubtitles account is configured under Subtitles below. Subtitles Info follows cues in the subtitle file (not the on-screen credits roll), so timing can vary by episode. Falls back to Playback Percentage when unavailable</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=autoscrape_alert_timing)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(80)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.auto_play_episode),false) + String.IsEqual(Window(10000).Property(redlight.autoscrape_next_episode),true)</visible>
-                          <property name="setting_label">    - Skip Intro</property>
-                          <property name="setting_type">action</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.autoplay_skip_intro_name)]</property>
-                          <property name="setting_description">When the next episode starts from Autoscrape Next Episode (not the first episode you chose yourself), skip the intro using embedded chapters when present, otherwise TheIntroDB then IntroDB. Prompt asks once per episode; Auto skips intro without asking. Fails silently when no intro data is available.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=autoplay_skip_intro)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(80)</visible>
@@ -3388,17 +3555,8 @@
                           <property name="setting_label">    - Confirm Before Autoscrape?</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.autoscrape_confirm)]</property>
-                          <property name="setting_description">Enable this and Red Light will confirm you wish to autoscrape the next episode towards the end of the current eisodes runtime</property>
+                          <property name="setting_description">Enable this and Red Light will confirm you wish to autoscrape the next episode towards the end of the current episode's runtime</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=autoscrape_confirm)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(80)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.auto_play_episode),true)</visible>
-                          <property name="setting_label">Limit Auto Play Quality</property>
-                          <property name="setting_type">action</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.autoplay_quality_episode)]</property>
-                          <property name="setting_description">Choose the Quality properties allowed for autoplay results</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=set_quality_choice&amp;setting_id=autoplay_quality_episode)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(80)</visible>
@@ -3443,17 +3601,8 @@
                           <property name="setting_label">    - Alert Timing Source</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.autoplay_alert_timing_name)]</property>
-                          <property name="setting_description">Choose when to show the Next Episode alert. Uses the percentage above, chapter markers, or subtitle timing. Falls back to Playback Percentage when unavailable</property>
+                          <property name="setting_description">Choose when to show the Next Episode alert. Uses the percentage above, chapter markers, IntroDB Info (TheIntroDB credits then IntroDB outro), or Subtitles Info when a SubMaker manifest URL and/or OpenSubtitles account is configured under Subtitles below. Subtitles Info follows cues in the subtitle file (not the on-screen credits roll), so timing can vary by episode. Falls back to Playback Percentage when unavailable</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=autoplay_alert_timing)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(80)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.auto_play_episode),true) + String.IsEqual(Window(10000).Property(redlight.autoplay_next_episode),true)</visible>
-                          <property name="setting_label">    - Skip Intro</property>
-                          <property name="setting_type">action</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.autoplay_skip_intro_name)]</property>
-                          <property name="setting_description">When the next episode starts from Autoplay Next Episode (not the first episode you chose yourself), skip the intro using embedded chapters when present, otherwise TheIntroDB then IntroDB. Prompt asks once per episode; Auto skips intro without asking. Fails silently when no intro data is available.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=autoplay_skip_intro)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(80)</visible>

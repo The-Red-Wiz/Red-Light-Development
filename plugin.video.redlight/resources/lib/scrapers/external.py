@@ -7,7 +7,7 @@ from caches.external_cache import external_cache
 from caches.settings_cache import get_setting
 from modules import kodi_utils, source_utils
 from modules.debrid import RD_check, AD_check, OC_check, TB_check, PM_check, query_local_cache
-from modules.settings import debrid_cache_check
+from modules.settings import debrid_cache_check, max_threads
 from modules.utils import clean_file_name
 # logger = kodi_utils.logger
 
@@ -96,11 +96,12 @@ class source:
 			self.source_dict = [i for i in self.source_dict if i[1].hasEpisodes]
 			self.season_packs, self.show_packs = source_utils.pack_enable_check(self.meta, self.season, self.episode)
 			if self.season_packs:
-				self.source_dict = [(i[0], i[1], '') for i in self.source_dict]
-				pack_capable = [i for i in self.source_dict if i[1].pack_capable]
+				base_entries = [self._source_entry(i) for i in self.source_dict]
+				self.source_dict = [(e[0], e[1], '', e[3], e[4], e[5]) for e in base_entries]
+				pack_capable = [e for e in base_entries if e[1].pack_capable]
 				if pack_capable:
-					self.source_dict.extend([(i[0], i[1], 'Season') for i in pack_capable])
-					if self.show_packs: self.source_dict.extend([(i[0], i[1], 'Show') for i in pack_capable])
+					self.source_dict.extend([(e[0], e[1], 'Season', e[3], e[4], e[5]) for e in pack_capable])
+					if self.show_packs: self.source_dict.extend([(e[0], e[1], 'Show', e[3], e[4], e[5]) for e in pack_capable])
 					random.shuffle(self.source_dict)
 					self.source_dict.sort(key=lambda k: k[2])
 			Thread(target=self.process_episode_threads).start()
@@ -110,58 +111,73 @@ class source:
 		if current_results: return self.process_results(current_results)
 		return []
 
+	def _source_entry(self, item):
+		provider_label = item[0]
+		module = item[1]
+		pack = ''
+		if len(item) > 2:
+			pack = item[2] if item[2] in ('Season', 'Show') else ''
+		cache_key = item[3] if len(item) > 3 and item[3] else provider_label
+		source_provider = item[4] if len(item) > 4 and item[4] else provider_label
+		external_module = item[5] if len(item) > 5 else ''
+		return provider_label, module, pack, cache_key, source_provider, external_module
+
+	def _wait_for_thread_capacity(self):
+		limit = max_threads()
+		while sum(1 for x in self.threads if x.is_alive()) >= limit:
+			if self.monitor.abortRequested(): return
+			kodi_utils.sleep(100)
+
 	def process_movie_threads(self):
 		try:
 			for i in self.source_dict:
-				provider, module = i[0], i[1]
-				threaded_object = Thread(target=self.get_movie_source, args=(provider, module), name=provider)
+				provider_label, module, pack, cache_key, source_provider, external_module = self._source_entry(i)
+				self._wait_for_thread_capacity()
+				threaded_object = Thread(target=self.get_movie_source, args=(provider_label, module, cache_key, source_provider, external_module), name=provider_label)
 				try:
 					threaded_object.start()
 					self.threads_append(threaded_object)
 				except RuntimeError:
-					# If the runtime cannot spawn more threads, finish remaining work serially.
-					self.get_movie_source(provider, module)
+					self.get_movie_source(provider_label, module, cache_key, source_provider, external_module)
 		finally:
 			self.threads_completed = True
 
 	def process_episode_threads(self):
 		try:
 			for i in self.source_dict:
-				provider, module = i[0], i[1]
-				try: pack_arg = i[2]
-				except: pack_arg = ''
-				if pack_arg: provider_display = '%s (%s)' % (i[0], i[2])
-				else: provider_display = provider
-				threaded_object = Thread(target=self.get_episode_source, args=(provider, module, pack_arg), name=provider_display)
+				provider_label, module, pack, cache_key, source_provider, external_module = self._source_entry(i)
+				if pack: provider_display = '%s (%s)' % (provider_label, pack)
+				else: provider_display = provider_label
+				self._wait_for_thread_capacity()
+				threaded_object = Thread(target=self.get_episode_source, args=(provider_label, module, pack, cache_key, source_provider, external_module), name=provider_display)
 				try:
 					threaded_object.start()
 					self.threads_append(threaded_object)
 				except RuntimeError:
-					# If the runtime cannot spawn more threads, finish remaining work serially.
-					self.get_episode_source(provider, module, pack_arg)
+					self.get_episode_source(provider_label, module, pack, cache_key, source_provider, external_module)
 		finally:
 			self.threads_completed = True
 
-	def get_movie_source(self, provider, module):
-		sources = external_cache.get(provider, self.media_type, self.tmdb_id, self.title, self.year, '', '')
+	def get_movie_source(self, provider_label, module, cache_key, source_provider, external_module):
+		sources = external_cache.get(cache_key, self.media_type, self.tmdb_id, self.title, self.year, '', '')
 		if sources == None:
 			sources = module().sources(self.data, self.host_dict)			
-			sources = self.process_sources(provider, sources)
+			sources = self.process_sources(source_provider, sources, external_module)
 			if not sources: expiry_hours = 1
 			else: expiry_hours = self.single_expiry
-			external_cache.set(provider, self.media_type, self.tmdb_id, self.title, self.year, '', '', sources, expiry_hours)
+			external_cache.set(cache_key, self.media_type, self.tmdb_id, self.title, self.year, '', '', sources, expiry_hours)
 		if sources:
 			if not self.background: self.process_quality_count(sources)
 			self.sources.extend(sources)
 		del module
 
-	def get_episode_source(self, provider, module, pack):
+	def get_episode_source(self, provider_label, module, pack, cache_key, source_provider, external_module):
 		if pack in ('Season', 'Show'):
 			if pack == 'Show': s_check = ''
 			else: s_check = self.season
 			e_check = ''
 		else: s_check, e_check = self.season, self.episode
-		sources = external_cache.get(provider, self.media_type, self.tmdb_id, self.title, self.year, s_check, e_check)
+		sources = external_cache.get(cache_key, self.media_type, self.tmdb_id, self.title, self.year, s_check, e_check)
 		if sources == None:
 			if pack == 'Show':
 				expiry_hours = self.show_expiry
@@ -172,9 +188,9 @@ class source:
 			else:
 				expiry_hours = self.single_expiry
 				sources = module().sources(self.data, self.host_dict)
-			sources = self.process_sources(provider, sources)
+			sources = self.process_sources(source_provider, sources, external_module)
 			if not sources: expiry_hours = 1
-			external_cache.set(provider, self.media_type, self.tmdb_id, self.title, self.year, s_check, e_check, sources, expiry_hours)
+			external_cache.set(cache_key, self.media_type, self.tmdb_id, self.title, self.year, s_check, e_check, sources, expiry_hours)
 		if sources:
 			if pack == 'Season': sources = [i for i in sources if not 'episode_start' in i or i['episode_start'] <= self.episode <= i['episode_end']]
 			elif pack == 'Show': sources = [i for i in sources if i['last_season'] >= self.season]
@@ -264,7 +280,7 @@ class source:
 			return final_results
 		except: return []
 
-	def process_sources(self, provider, sources):
+	def process_sources(self, provider, sources, external_module=''):
 		try:
 			for i in sources:
 				try:
@@ -284,8 +300,10 @@ class source:
 							size = float(size) / divider
 						size_label = '%.2f GB' % size
 					except: pass
-					i.update({'provider': provider, 'display_name': display_name, 'external': True, 'scrape_provider': self.scrape_provider, 'extraInfo': extraInfo,
-							'quality': quality, 'size_label': size_label, 'size': round(size, 2)})
+					extra = {'provider': provider, 'display_name': display_name, 'external': True, 'scrape_provider': self.scrape_provider, 'extraInfo': extraInfo,
+							'quality': quality, 'size_label': size_label, 'size': round(size, 2)}
+					if external_module: extra['external_module'] = external_module
+					i.update(extra)
 				except: pass
 		except: pass
 		return sources

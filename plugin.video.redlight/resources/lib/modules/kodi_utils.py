@@ -833,9 +833,14 @@ def open_settings():
 	from windows.base_window import open_window
 	open_window(('windows.settings_manager', 'SettingsManager'), 'settings_manager.xml')
 
-def external_scraper_settings():
+def external_scraper_settings(params=None):
 	try:
-		external = get_property('redlight.external_scraper.module')
+		from modules import settings
+		params = params or {}
+		try: slot = int(params.get('slot', '1'))
+		except: slot = 1
+		data = settings.external_scraper_slot_data(slot)
+		external = data['module'] or get_property('redlight.external_scraper.module')
 		if external in ('empty_setting', ''): return
 		execute_builtin('Addon.OpenSettings(%s)' % external)
 	except: pass
