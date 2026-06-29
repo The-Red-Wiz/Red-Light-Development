@@ -226,11 +226,6 @@ class IntroSkipPrompt(BaseDialog):
 		pause_timer = 10
 		try:
 			while not self.closed and pause_timer >= 0:
-				try:
-					if not self.player.isPlayingVideo() and not self.player.isPlaying():
-						break
-				except:
-					pass
 				self.setProperty('pause_timer', '%02d %s' % (pause_timer, 'seconds' if pause_timer > 1 else 'second'))
 				self.sleep(1000)
 				if self.closed:

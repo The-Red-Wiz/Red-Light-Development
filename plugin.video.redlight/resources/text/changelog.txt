@@ -1,3 +1,6 @@
+[COLOR red][B]Version 1.5.4[/B][/COLOR]
+- [B]Skip Intro[/B]: ignore bogus embedded chapter pairs (e.g. [B]0s → 4s[/B]) so [B]TheIntroDB[/B] / [B]IntroDB[/B] can supply real intro timing; [B]Prompt[/B] still seeks if you tap [B]Yes[/B] shortly after the intro window ends. [B]Prompt[/B] stays open for the full countdown even if playback buffers.
+
 [COLOR red][B]Version 1.5.3[/B][/COLOR]
 - [B]Skip Intro[/B] now applies to the [B]Autoscrape Next Episode[/B] chain as well as [B]Autoplay Next Episode[/B] (same [B]Off[/B] / [B]Auto[/B] / [B]Prompt[/B] setting under [B]Playback > Episodes[/B]).
 - [B]Subtitles Info[/B] alert timing: treats music/SFX subtitle cues (e.g. [B]exciting music[/B]) as non-dialogue, and when dialogue ends long before EOF anchors the pop on the first music cue in the final ~65 seconds of the file (instead of the last cue deep in the credits roll). Fixed erroneous clamp to ~20 seconds before EOF that could fire the alert at end credits. Short tails (under 60s after last spoken line) are unchanged.

@@ -17,6 +17,9 @@ _STINGER_EARLY_OFFSET_SEC = 180
 _NEXTEP_SUB_FETCH_DEFER_SEC = 45
 _INTRO_SKIP_PROMPT_EARLY_SEC = 15
 _INTRO_SKIP_EARLY_START_SEC = 120
+_INTRO_CHAPTER_MIN_SEGMENT_SEC = 10
+_INTRO_CHAPTER_MIN_END_SEC = 15
+_INTRO_SKIP_POST_END_GRACE_SEC = 20
 
 class RedLightPlayer(xbmc.Player):
 	def __init__ (self):
@@ -751,7 +754,7 @@ class RedLightPlayer(xbmc.Player):
 				return
 			start_sec = total * start_pct / 100.0
 			end_sec = total * end_pct / 100.0
-			if end_sec - start_sec < 3:
+			if end_sec - start_sec < _INTRO_CHAPTER_MIN_SEGMENT_SEC or end_sec < _INTRO_CHAPTER_MIN_END_SEC:
 				return
 			self._intro_skip_segment = {'start_sec': start_sec, 'end_sec': end_sec, 'source': 'chapters'}
 		except: pass
@@ -808,8 +811,9 @@ class RedLightPlayer(xbmc.Player):
 		if curr < start_sec:
 			return
 		if curr >= end_sec:
-			self._intro_skip_done = True
-			return
+			if not (getattr(self, '_intro_skip_approved', False) and curr < end_sec + _INTRO_SKIP_POST_END_GRACE_SEC):
+				self._intro_skip_done = True
+				return
 		try:
 			if not self.seek(end_sec, False):
 				self._intro_skip_done = True
