@@ -585,15 +585,6 @@ def external_scraper_slot_data(slot):
 		return {'slot': int(slot), 'module': '', 'name': '', 'enabled': False, 'folder_name': ''}
 	return {'slot': int(slot), 'module': module, 'name': name, 'enabled': enabled, 'folder_name': module.split('.')[-1]}
 
-def external_scraper_max_slots_options():
-	return {'0': 'All Enabled', '1': 'Top 1', '2': 'Top 2', '3': 'Top 3'}
-
-def external_scraper_max_slots():
-	value = get_setting('redlight.external_scraper.max_slots', '0')
-	try: limit = int(value)
-	except: limit = 0
-	return 0 if limit <= 0 else min(limit, EXTERNAL_SCRAPER_SLOT_COUNT)
-
 def external_scraper_cache_key(module_id, provider):
 	return '%s::%s' % (module_id, provider)
 
@@ -604,10 +595,18 @@ def active_external_modules():
 		if not data['module'] or not data['enabled']: continue
 		display = data['name'] if data['name'] not in ('empty_setting', '') else data['folder_name']
 		modules.append({'slot': slot, 'module_id': data['module'], 'folder_name': data['folder_name'], 'display_name': display})
-	limit = external_scraper_max_slots()
-	if limit and len(modules) > limit:
-		modules = modules[:limit]
 	return modules
+
+def external_module_display_name(module_id):
+	if not module_id or module_id in ('empty_setting', ''): return ''
+	for slot in range(1, EXTERNAL_SCRAPER_SLOT_COUNT + 1):
+		data = external_scraper_slot_data(slot)
+		if data['module'] == module_id:
+			if data['name'] not in ('empty_setting', '', None): return data['name']
+			return data['folder_name']
+	module_id = str(module_id)
+	if '.' in module_id: return module_id.split('.')[-1]
+	return module_id
 
 def any_external_scraper_configured():
 	for slot in range(1, EXTERNAL_SCRAPER_SLOT_COUNT + 1):
@@ -624,12 +623,22 @@ def _sync_legacy_external_scraper_from_slot(slot=1):
 		set_setting('external_scraper.module', 'empty_setting')
 		set_setting('external_scraper.name', 'empty_setting')
 
+def external_scraper_module_in_use(module_id, exclude_slot=None):
+	if not module_id or module_id in ('empty_setting', ''): return 0
+	for slot in range(1, EXTERNAL_SCRAPER_SLOT_COUNT + 1):
+		if exclude_slot and int(slot) == int(exclude_slot): continue
+		if external_scraper_slot_data(slot)['module'] == module_id: return slot
+	return 0
+
 def set_external_scraper_slot(slot, module_id, module_name, enable=True):
 	slot = int(slot)
+	if module_id and module_id not in ('empty_setting', ''):
+		if external_scraper_module_in_use(module_id, exclude_slot=slot): return False
 	set_setting(_external_slot_setting(slot, 'module'), module_id or 'empty_setting')
 	set_setting(_external_slot_setting(slot, 'name'), module_name or 'empty_setting')
 	set_setting(_external_slot_setting(slot, 'enabled'), 'true' if enable and module_id else 'false')
 	if slot == 1: _sync_legacy_external_scraper_from_slot(1)
+	return True
 
 def swap_external_scraper_slots(slot_a, slot_b):
 	slot_a, slot_b = int(slot_a), int(slot_b)

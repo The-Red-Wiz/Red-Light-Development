@@ -339,7 +339,7 @@ class Navigator:
 
 	def tools(self):
 		self.add({'mode': 'open_settings', 'isFolder': 'false'}, 'Settings', 'settings')
-		if settings.any_external_scraper_configured():
+		if s.any_external_scraper_configured():
 			self.add({'mode': 'open_external_scraper_settings', 'slot': '1', 'isFolder': 'false'}, 'External Scraper Settings', 'settings')
 		self.add({'mode': 'navigator.tips'}, 'Tips for Use', 'settings2')
 		if get_setting('redlight.use_viewtypes', 'true') == 'true' and not get_setting('redlight.manual_viewtypes', 'false') == 'true':

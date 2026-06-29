@@ -1816,15 +1816,6 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
-                          <property name="setting_label">Max Scraper Modules Per Search</property>
-                          <property name="setting_type">action</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.max_slots_name)]</property>
-                          <property name="setting_description">How many enabled external scraper modules to run per search. Slots are used in order (1, then 2, then 3). All enabled runs every configured slot in parallel with one shared timeout.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=external_scraper.max_slots)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(60)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <property name="setting_label">External Scraper Slot 1</property>
                           <property name="setting_type">separator</property>
                           <onclick>noop</onclick>
@@ -1852,6 +1843,7 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot1.module),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.slot1.enabled),true)</visible>
                           <property name="setting_label">Open Slot 1 Module Settings</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
@@ -1863,6 +1855,7 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot1.module),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.slot1.enabled),true)</visible>
                           <property name="setting_label">Clear Slot 1</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
@@ -1899,6 +1892,7 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.module),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.enabled),true)</visible>
                           <property name="setting_label">Open Slot 2 Module Settings</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
@@ -1910,6 +1904,7 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.module),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.enabled),true)</visible>
                           <property name="setting_label">Move Slot 2 Up</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
@@ -1920,6 +1915,7 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.module),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.slot2.enabled),true)</visible>
                           <property name="setting_label">Clear Slot 2</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
@@ -1956,6 +1952,7 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.module),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.enabled),true)</visible>
                           <property name="setting_label">Open Slot 3 Module Settings</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
@@ -1967,6 +1964,7 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.module),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.enabled),true)</visible>
                           <property name="setting_label">Move Slot 3 Up</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>
@@ -1977,6 +1975,7 @@
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.module),empty_setting)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.slot3.enabled),true)</visible>
                           <property name="setting_label">Clear Slot 3</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">...</property>

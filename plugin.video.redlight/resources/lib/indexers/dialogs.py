@@ -515,6 +515,15 @@ def external_scraper_choice(params):
 		results = kodi_utils.jsonrpc_get_addons('xbmc.python.module')
 		results = [i for i in results if kodi_utils.addon_enabled(i['addonid'])]
 	except: return
+	used = {}
+	for other_slot in range(1, settings.EXTERNAL_SCRAPER_SLOT_COUNT + 1):
+		if other_slot == slot: continue
+		data = settings.external_scraper_slot_data(other_slot)
+		if data['module']: used[data['module']] = other_slot
+	results = [i for i in results if i['addonid'] not in used]
+	if not results:
+		kodi_utils.ok_dialog(text='Every installed scraper module is already assigned to another slot.[CR]Clear a slot or install another module.')
+		return
 	list_items = [{'line1': i['name'], 'icon': i['thumbnail']} for i in results]
 	kwargs = {'items': json.dumps(list_items), 'heading': 'External Scraper Slot %d' % slot}
 	choice = kodi_utils.select_dialog(results, **kwargs)
@@ -529,7 +538,10 @@ def external_scraper_choice(params):
 	except: pass
 	if success:
 		try:
-			settings.set_external_scraper_slot(slot, module_id, module_name, enable=True)
+			if not settings.set_external_scraper_slot(slot, module_id, module_name, enable=True):
+				other_slot = settings.external_scraper_module_in_use(module_id, exclude_slot=slot)
+				kodi_utils.ok_dialog(text='[B]%s[/B] is already assigned to slot %d.[CR]Choose a different module or clear that slot first.' % (module_name, other_slot))
+				return
 			set_setting('provider.external', 'true')
 			kodi_utils.ok_dialog(text='Success.[CR][B]%s[/B] set as External Scraper slot %d' % (module_name, slot))
 			try:
