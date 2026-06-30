@@ -683,6 +683,30 @@ def external_scraper_enabled_module_count():
 			count += 1
 	return count
 
+def configured_external_scraper_slots():
+	slots = []
+	for slot in range(1, EXTERNAL_SCRAPER_SLOT_COUNT + 1):
+		data = external_scraper_slot_data(slot)
+		if not data['module']: continue
+		display = data['name'] if data['name'] not in ('empty_setting', '', None) else data['folder_name']
+		slots.append({'slot': slot, 'module_id': data['module'], 'display_name': display, 'enabled': data['enabled']})
+	return slots
+
+def external_scraper_settings_tools_label():
+	if len(configured_external_scraper_slots()) != 1:
+		return 'External Scrapers Settings'
+	return 'External Scraper Settings'
+
+def external_scraper_settings_options_label():
+	if len(configured_external_scraper_slots()) != 1:
+		return 'Open External Scrapers Settings'
+	return 'Open External Scraper Settings'
+
+def append_external_scraper_settings_cm(cm_append, build_url_fn):
+	if not configured_external_scraper_slots(): return
+	cm_append(['external_scraper_settings', ('[B]%s[/B]' % external_scraper_settings_tools_label(),
+		'RunPlugin(%s)' % build_url_fn({'mode': 'open_external_scraper_settings'}))])
+
 def external_scraper_run_mode_series():
 	return get_setting('redlight.external_scraper.run_mode', '0') == '1'
 
@@ -968,7 +992,7 @@ def rescrape_action_value(action, default='0'):
 	return int(get_setting('redlight.rescrape.%s' % action, default))
 
 def cm_enabled():
-	default = 'extras,options,playback_options,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
+	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
 				'mdblist_manager,simkl_manager,trakt_manager,tmdb_manager,personal_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'
 	setting = get_setting('redlight.context_menu.enabled', default)
 	if setting in ('', None, 'noop', '[]'): return default.split(',')
@@ -1004,6 +1028,22 @@ def _normalize_cm_list_order(order):
 		ti, pi = order.index('tmdb_manager'), order.index('personal_manager')
 		if pi < ti: order[ti], order[pi] = order[pi], order[ti]
 	return order
+
+def migrate_external_scraper_context_menu_for_upgrade(had_existing_settings):
+	if get_setting('redlight.external_scraper.cm_menu_migrated', 'false') == 'true': return False
+	set_setting('external_scraper.cm_menu_migrated', 'true')
+	if not had_existing_settings: return False
+	item, changed = 'external_scraper_settings', False
+	for setting_key in ('context_menu.enabled', 'context_menu.order'):
+		raw = get_setting('redlight.%s' % setting_key, '')
+		if raw in ('', None, 'noop', '[]'): continue
+		parts = [p for p in raw.split(',') if p]
+		if item in parts: continue
+		if 'playback_options' in parts: parts.insert(parts.index('playback_options') + 1, item)
+		else: parts.append(item)
+		set_setting(setting_key, ','.join(parts))
+		changed = True
+	return changed
 
 def migrate_simkl_context_menu_for_upgrade(had_existing_settings):
 	if get_setting('redlight.simkl.cm_menu_migrated', 'false') == 'true': return False
@@ -1052,7 +1092,7 @@ def migrate_cm_manager_order_for_upgrade():
 	return get_setting('redlight.context_menu.order', '') != before
 
 def cm_current_order():
-	default = 'extras,options,playback_options,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
+	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
 				'mdblist_manager,simkl_manager,trakt_manager,tmdb_manager,personal_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'
 	setting = get_setting('redlight.context_menu.order', default)
 	if setting in ('', None, 'noop', '[]'): order = default.split(',')

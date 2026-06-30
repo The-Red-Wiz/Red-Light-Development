@@ -1,3 +1,7 @@
+[COLOR red][B]Version 1.6.2[/B][/COLOR]
+- [B]Tools[/B] and [B]Options[/B]: [B]External Scraper(s) Settings[/B] opens a picker when more than one scraper module is configured (lists each slot by name; disabled slots marked). One module configured opens that module's settings directly. Per-slot [B]Open[/B] under [B]Sources Accounts[/B] is unchanged.
+- [B]Context Menu[/B]: [B]External Scraper(s) Settings[/B] on movie, TV show, season, and episode rows (after [B]Play Options[/B] where shown). Same picker behaviour. Toggle visibility under [B]Settings > General > Context Menu[/B]. [B]Options[/B] on TV shows and seasons includes the same entry.
+
 [COLOR red][B]Version 1.6.1[/B][/COLOR]
 - [B]External Scrapers[/B] ([B]test[/B]): [B]Search Mode[/B] under [B]Sources Accounts[/B] when two or more slots are enabled — [B]Parallel (All Enabled Slots)[/B] runs every enabled slot together (2 enabled = 2 parallel, 3 enabled = 3 parallel; same as 1.6.0). [B]Series (Fallback by Slot Order)[/B] runs one slot at a time and tries the next only when the previous slot returned no torrents. Setting hidden with a single enabled slot. [B]ScrapeExternalWave[/B] lines in [B]kodi.log[/B] when [B]Series[/B] is active.
 - [B]External Scrapers[/B]: [B]Choose Module[/B] list marks the current slot assignment with a red indicator and [B]Current selection for slot N[/B] subtitle; list opens focused on that row.

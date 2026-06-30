@@ -1128,7 +1128,10 @@ def options_menu_choice(params, meta=None):
 		if menu_type in ('tvshow', 'season', 'episode'): listing_append(('TV Shows Progress Manager', '', 'nextep_manager'))
 		listing_append(('Open Download Manager', '', 'open_download_manager'))
 		listing_append(('Open Tools', '', 'open_tools'))
-		if menu_type in ('movie', 'episode') or menu_type in single_ep_list: listing_append(('Open External Scraper Settings', '', 'open_external_scraper_settings'))
+		if menu_type in ('movie', 'episode', 'tvshow', 'season') or menu_type in single_ep_list:
+			configured_scrapers = settings.configured_external_scraper_slots()
+			if configured_scrapers:
+				listing_append((settings.external_scraper_settings_options_label(), '', 'open_external_scraper_settings'))
 		listing_append(('Open Settings', '', 'open_settings'))
 	list_items = [{'line1': item[0], 'line2': item[1] or item[0], 'icon': poster} for item in listing]
 	heading = rootname or 'Options...'
