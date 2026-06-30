@@ -654,7 +654,6 @@ def swap_external_scraper_slots(slot_a, slot_b):
 
 def migrate_external_scraper_slots_for_upgrade(had_existing_settings):
 	if not had_existing_settings: return False
-	if get_setting('redlight.migration.external_scraper_slots_v160', 'false') == 'true': return False
 	migrated = False
 	slot1 = external_scraper_slot_data(1)
 	if not slot1['module']:
@@ -663,8 +662,9 @@ def migrate_external_scraper_slots_for_upgrade(had_existing_settings):
 		if legacy_module not in ('empty_setting', ''):
 			set_external_scraper_slot(1, legacy_module, legacy_name, enable=get_setting('redlight.provider.external', 'false') == 'true')
 			migrated = True
-	set_setting('migration.external_scraper_slots_v160', 'true')
-	return True if migrated else False
+	if get_setting('redlight.migration.external_scraper_slots_v160', 'false') != 'true':
+		set_setting('migration.external_scraper_slots_v160', 'true')
+	return migrated
 
 def external_scraper_info():
 	modules = active_external_modules()

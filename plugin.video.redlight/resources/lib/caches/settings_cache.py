@@ -553,11 +553,10 @@ def sync_settings(params={}):
 		currentsettings['migration.cache_check_pm_oc_tb_v129e'] = 'true'
 		if load_properties: settings_cache.set_memory_cache('migration.cache_check_pm_oc_tb_v129e', 'true')
 	if currentsettings:
-		from modules.settings import migrate_simkl_context_menu_for_upgrade, migrate_mdblist_context_menu_for_upgrade, migrate_cm_manager_order_for_upgrade, migrate_external_scraper_slots_for_upgrade
+		from modules.settings import migrate_simkl_context_menu_for_upgrade, migrate_mdblist_context_menu_for_upgrade, migrate_cm_manager_order_for_upgrade
 		if migrate_simkl_context_menu_for_upgrade(had_existing_settings): migrated = True
 		if migrate_mdblist_context_menu_for_upgrade(had_existing_settings): migrated = True
 		if migrate_cm_manager_order_for_upgrade(): migrated = True
-		if migrate_external_scraper_slots_for_upgrade(had_existing_settings): migrated = True
 		if currentsettings.get('migration.my_content_nav_mode_v136') != 'true':
 			try:
 				from caches.navigator_cache import migrate_my_content_nav_mode
@@ -595,6 +594,9 @@ def sync_settings(params={}):
 		migrated = True
 		if _new_settings_affect_widgets(insert_list):
 			widgets_migrated = True
+	if had_existing_settings:
+		from modules.settings import migrate_external_scraper_slots_for_upgrade
+		if migrate_external_scraper_slots_for_upgrade(had_existing_settings): migrated = True
 	if migrated and had_existing_settings:
 		kodi_utils.set_property(_SETTINGS_DB_MIGRATED, 'true')
 	if widgets_migrated and had_existing_settings:
