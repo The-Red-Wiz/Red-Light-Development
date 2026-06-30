@@ -1836,7 +1836,7 @@
                           <property name="setting_label">Choose Module (Slot 1)</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.slot1.name)]</property>
-                          <property name="setting_description">Choose the external scraper module for slot 1 (e.g. Magneto, Gears, Chainscrapers).</property>
+                          <property name="setting_description">Choose the external scraper module for slot 1 (e.g. Gears, Magneto, Coco).</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=external_scraper_choice&amp;slot=1)</onclick>
                       </item>
                       <item>
