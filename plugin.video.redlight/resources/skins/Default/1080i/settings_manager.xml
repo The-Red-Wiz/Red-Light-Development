@@ -1816,6 +1816,24 @@
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.multi_search),true)</visible>
+                          <property name="setting_label">Multi-Scraper Search</property>
+                          <property name="setting_type">separator</property>
+                          <onclick>noop</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.external_scraper.multi_search),true)</visible>
+                          <property name="setting_label">Search Mode</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.external_scraper.run_mode_name)]</property>
+                          <property name="setting_description">[B]Parallel (All Enabled Slots)[/B] runs every enabled slot at the same time — how many run is automatic (2 enabled = 2 parallel, 3 enabled = 3 parallel). Same as 1.6.0 when all slots are on.[CR][CR][B]Series (Fallback by Slot Order)[/B] is separate: runs slot 1 first, then slot 2 only if slot 1 returned no torrents, then slot 3 only if slot 2 returned nothing. Slower; useful for obscure titles or when your primary scraper often misses results.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=external_scraper.run_mode)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.external),true)</visible>
                           <property name="setting_label">External Scraper Slot 1</property>
                           <property name="setting_type">separator</property>
                           <onclick>noop</onclick>

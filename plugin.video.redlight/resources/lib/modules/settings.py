@@ -675,6 +675,32 @@ def external_scraper_info():
 	if module in ('empty_setting', ''): return None, ''
 	return module, module.split('.')[-1]
 
+def external_scraper_enabled_module_count():
+	count = 0
+	for slot in range(1, EXTERNAL_SCRAPER_SLOT_COUNT + 1):
+		data = external_scraper_slot_data(slot)
+		if data['module'] and data['enabled']:
+			count += 1
+	return count
+
+def external_scraper_run_mode_series():
+	return get_setting('redlight.external_scraper.run_mode', '0') == '1'
+
+def refresh_external_scraper_properties():
+	from modules.kodi_utils import set_property
+	count = external_scraper_enabled_module_count()
+	set_property('redlight.external_scraper.enabled_count', str(count))
+	set_property('redlight.external_scraper.multi_search', 'true' if count >= 2 else 'false')
+
+def migrate_external_scraper_run_mode_for_upgrade(had_existing_settings):
+	if not had_existing_settings:
+		return False
+	if get_setting('redlight.external_scraper.run_mode', 'empty_setting') not in ('empty_setting', ''):
+		return False
+	legacy = get_setting('redlight.external_scraper.max_modules_parallel', '3')
+	set_setting('external_scraper.run_mode', '1' if legacy == '1' else '0')
+	return True
+
 def filter_by_name(scraper):
 	if get_property('fs_filterless_search') == 'true': return False
 	return get_setting('redlight.%s.title_filter' % scraper, 'false') == 'true'

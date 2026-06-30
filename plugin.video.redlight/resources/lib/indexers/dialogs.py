@@ -524,8 +524,20 @@ def external_scraper_choice(params):
 	if not results:
 		kodi_utils.ok_dialog(text='Every installed scraper module is already assigned to another slot.[CR]Clear a slot or install another module.')
 		return
-	list_items = [{'line1': i['name'], 'icon': i['thumbnail']} for i in results]
+	current_module = settings.external_scraper_slot_data(slot)['module']
+	list_items = []
+	preselect_index = None
+	for idx, item in enumerate(results):
+		entry = {'line1': item['name'], 'icon': item['thumbnail']}
+		if current_module and item['addonid'] == current_module:
+			entry['line2'] = 'Current selection for slot %d' % slot
+			preselect_index = idx
+		list_items.append(entry)
 	kwargs = {'items': json.dumps(list_items), 'heading': 'External Scraper Slot %d' % slot}
+	if preselect_index is not None:
+		kwargs['multi_line'] = 'true'
+		kwargs['preselect'] = [preselect_index]
+		kwargs['set_focus'] = preselect_index
 	choice = kodi_utils.select_dialog(results, **kwargs)
 	if choice == None: return
 	module_id, module_name = choice['addonid'], choice['name']

@@ -12,7 +12,7 @@ from modules.utils import clean_file_name
 # logger = kodi_utils.logger
 
 class source:
-	def __init__(self, meta, source_dict, active_debrid, cache_check_override, internal_scrapers, prescrape_sources, progress_dialog, disabled_ext_ignored=False, cloud_scrapers=None):
+	def __init__(self, meta, source_dict, active_debrid, cache_check_override, internal_scrapers, prescrape_sources, progress_dialog, disabled_ext_ignored=False, cloud_scrapers=None, external_orchestration=None):
 		self.monitor = kodi_utils.kodi_monitor()
 		self.scrape_provider = 'external'
 		self.progress_dialog = progress_dialog
@@ -21,6 +21,7 @@ class source:
 		self.background = self.meta.get('background', False)
 		self.active_debrid = active_debrid
 		self.source_dict, self.host_dict = source_dict, []
+		self.external_orchestration = external_orchestration
 		self.sources, self.all_internal_sources, self.processed_internal_scrapers = [], [], []
 		self.processed_internal_scrapers_append = self.processed_internal_scrapers.append
 		self.internal_scrapers, self.prescrape_sources = [i for i in (internal_scrapers or []) if i != 'external'], prescrape_sources
@@ -56,9 +57,11 @@ class source:
 				self.data = {'imdb': info['imdb_id'], 'tvdb': info['tvdb_id'], 'tvshowtitle': self.title, 'aliases': aliases,'year': self.year,
 							'title': ep_name, 'season': str(self.season), 'episode': str(self.episode)}
 		except: return []
-		return self.get_sources()
+		if self.external_orchestration and len(self.external_orchestration.get('groups', [])) > 1:
+			return self._get_sources_orchestrated()
+		return self._get_sources_flat()
 
-	def get_sources(self):
+	def _get_sources_flat(self):
 		def _scraperDialog():
 			kodi_utils.hide_busy_dialog()
 			kodi_utils.sleep(200)
@@ -93,23 +96,112 @@ class source:
 		self.threads_append = self.threads.append
 		if self.media_type == 'movie': Thread(target=self.process_movie_threads).start()
 		else:
-			self.source_dict = [i for i in self.source_dict if i[1].hasEpisodes]
-			self.season_packs, self.show_packs = source_utils.pack_enable_check(self.meta, self.season, self.episode)
-			if self.season_packs:
-				base_entries = [self._source_entry(i) for i in self.source_dict]
-				self.source_dict = [(e[0], e[1], '', e[3], e[4], e[5]) for e in base_entries]
-				pack_capable = [e for e in base_entries if e[1].pack_capable]
-				if pack_capable:
-					self.source_dict.extend([(e[0], e[1], 'Season', e[3], e[4], e[5]) for e in pack_capable])
-					if self.show_packs: self.source_dict.extend([(e[0], e[1], 'Show', e[3], e[4], e[5]) for e in pack_capable])
-					random.shuffle(self.source_dict)
-					self.source_dict.sort(key=lambda k: k[2])
+			self._prepare_episode_source_dict()
 			Thread(target=self.process_episode_threads).start()
 		if self.background: _background()
 		else: _scraperDialog()
 		current_results = list(self.sources)
 		if current_results: return self.process_results(current_results)
 		return []
+
+	def _prepare_episode_source_dict(self):
+		self.source_dict = [i for i in self.source_dict if i[1].hasEpisodes]
+		self.season_packs, self.show_packs = source_utils.pack_enable_check(self.meta, self.season, self.episode)
+		if self.season_packs:
+			base_entries = [self._source_entry(i) for i in self.source_dict]
+			self.source_dict = [(e[0], e[1], '', e[3], e[4], e[5]) for e in base_entries]
+			pack_capable = [e for e in base_entries if e[1].pack_capable]
+			if pack_capable:
+				self.source_dict.extend([(e[0], e[1], 'Season', e[3], e[4], e[5]) for e in pack_capable])
+				if self.show_packs: self.source_dict.extend([(e[0], e[1], 'Show', e[3], e[4], e[5]) for e in pack_capable])
+				random.shuffle(self.source_dict)
+				self.source_dict.sort(key=lambda k: k[2])
+
+	def _get_sources_orchestrated(self):
+		orch = self.external_orchestration
+		groups = orch['groups']
+		max_parallel = max(1, int(orch.get('max_parallel', 1)))
+		skip_threshold = int(orch.get('skip_threshold', 0))
+		series_mode = max_parallel <= 1
+		wave_step = 1 if series_mode else max_parallel
+		phase_deadline = time.time() + self.timeout
+		wave_idx = 0
+		stop_reason = 'exhausted'
+		for wave_start in range(0, len(groups), wave_step):
+			remaining = phase_deadline - time.time()
+			if remaining <= 0:
+				stop_reason = 'timeout'
+				break
+			wave = groups[wave_start:wave_start + wave_step]
+			wave_idx += 1
+			baseline = len(self.sources)
+			wave_labels = [g['display_name'] for g in wave]
+			batch_entries = []
+			for group in wave:
+				batch_entries.extend(group['entries'])
+			self._run_provider_batch(batch_entries, remaining, wave_labels)
+			wave_total = len(self.sources)
+			wave_new = wave_total - baseline
+			if series_mode:
+				if wave_new > 0:
+					stop_reason = 'series_hit'
+			elif skip_threshold > 0 and wave_total > skip_threshold:
+				stop_reason = 'threshold'
+			try:
+				kodi_utils.logger('ScrapeExternalWave', 'wave=%d modules=%s wave_new=%d total=%d threshold=%d series=%s stop=%s' % (
+					wave_idx, ','.join(wave_labels), wave_new, wave_total, skip_threshold, series_mode, stop_reason))
+			except: pass
+			if stop_reason in ('series_hit', 'threshold'):
+				break
+		try:
+			kodi_utils.logger('ScrapeExternalWave', 'finished total=%d reason=%s' % (len(self.sources), stop_reason))
+		except: pass
+		current_results = list(self.sources)
+		if current_results: return self.process_results(current_results)
+		return []
+
+	def _run_provider_batch(self, batch_entries, batch_timeout, wave_labels):
+		def _scraperDialog():
+			kodi_utils.hide_busy_dialog()
+			kodi_utils.sleep(200)
+			batch_start = time.time()
+			line1_prefix = ' | '.join(wave_labels).upper()
+			while not self.progress_dialog.iscanceled() and not self.monitor.abortRequested():
+				try:
+					alive_threads = [x.getName() for x in self.threads if x.is_alive()]
+					if self.internal_activated or self.internal_prescraped: alive_threads.extend(self.process_internal_results())
+					self.poll_cloud_scrapers()
+					line1 = line1_prefix
+					if alive_threads: line1 = '%s: %s' % (line1_prefix, ', '.join(alive_threads).upper())
+					elapsed = max((time.time() - batch_start), 0)
+					percent = min(100, (elapsed / float(batch_timeout)) * 100)
+					self.progress_dialog.update_scraper(self.sources_sd, self.sources_720p, self.sources_1080p, self.sources_4k, self.sources_total, line1, percent)
+					if self.threads_completed:
+						if len(alive_threads) == 0: break
+					if time.time() >= batch_start + batch_timeout:
+						self._join_scraper_threads_grace(8)
+						break
+					kodi_utils.sleep(100)
+				except: pass
+		def _background():
+			kodi_utils.sleep(1500)
+			end_time = time.time() + batch_timeout
+			while time.time() < end_time:
+				alive_threads = [x for x in self.threads if x.is_alive()]
+				len_alive_threads = len(alive_threads)
+				kodi_utils.sleep(1000)
+				if len_alive_threads <= 5: return
+				if len(self.sources) >= 100 * len_alive_threads: return
+		self.source_dict = list(batch_entries)
+		self.threads = []
+		self.threads_append = self.threads.append
+		self.threads_completed = False
+		if self.media_type == 'movie': Thread(target=self.process_movie_threads).start()
+		else:
+			self._prepare_episode_source_dict()
+			Thread(target=self.process_episode_threads).start()
+		if self.background: _background()
+		else: _scraperDialog()
 
 	def _source_entry(self, item):
 		provider_label = item[0]

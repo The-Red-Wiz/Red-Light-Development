@@ -389,7 +389,7 @@ class Sources():
 				# window properties on the external progress bar (was showing TB_CLOUD etc. for the full timeout).
 				external_progress_scrapers = [i for i in self.internal_scraper_names if i not in self.remove_scrapers]
 				self.external_args = (self.meta, self.external_providers, self.debrid_enabled, self.cache_check_override, external_progress_scrapers,
-										self.prescrape_sources, self.progress_dialog, self.disabled_ext_ignored, self.cloud_scraper_names)
+										self.prescrape_sources, self.progress_dialog, self.disabled_ext_ignored, self.cloud_scraper_names, self.external_orchestration())
 				self.activate_providers('external', external, False)
 			if self._user_cancelled_scrape():
 				return []
@@ -764,8 +764,8 @@ class Sources():
 		remaining = [i for i in self.active_internal_scrapers if i not in self.remove_scrapers]
 		return bool(remaining)
 
-	def external_sources(self):
-		merged = []
+	def external_module_groups(self):
+		groups = []
 		for mod in getattr(self, 'external_modules', None) or settings.active_external_modules():
 			append_module_to_syspath('special://home/addons/%s/lib' % mod['module_id'])
 			try:
@@ -773,14 +773,29 @@ class Sources():
 			except:
 				sourceDict = []
 			module_label = mod.get('display_name') or mod['folder_name']
+			entries = []
 			for item in sourceDict or []:
 				try:
 					provider, module_class = item[0], item[1]
 					pack = item[2] if len(item) > 2 else ''
 					cache_key = settings.external_scraper_cache_key(mod['module_id'], provider)
 					thread_name = '%s [%s]' % (provider, module_label)
-					merged.append((thread_name, module_class, pack, cache_key, provider, mod['module_id']))
+					entries.append((thread_name, module_class, pack, cache_key, provider, mod['module_id']))
 				except: pass
+			if entries:
+				groups.append({'module_id': mod['module_id'], 'display_name': module_label, 'entries': entries})
+		return groups
+
+	def external_orchestration(self):
+		groups = self.external_module_groups()
+		if len(groups) <= 1: return None
+		if not settings.external_scraper_run_mode_series(): return None
+		return {'groups': groups, 'max_parallel': 1, 'skip_threshold': 0}
+
+	def external_sources(self):
+		merged = []
+		for group in self.external_module_groups():
+			merged.extend(group['entries'])
 		return merged
 
 	def folder_sources(self):
