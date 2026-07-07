@@ -1176,6 +1176,7 @@ def default_settings():
 {'setting_id': 'aiostreams.username', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'aiostreams.password', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'aiostreams.title_filter', 'setting_type': 'boolean', 'setting_default': 'true'},
+{'setting_id': 'aiostreams.preserve_order', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'check.aiostreams', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'autoplay.aiostreams', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'aio.priority', 'setting_type': 'action', 'setting_default': '7', 'min_value': '1', 'max_value': '10'},

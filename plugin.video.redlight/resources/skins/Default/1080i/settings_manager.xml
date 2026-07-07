@@ -2084,6 +2084,17 @@
                           <visible>String.IsEqual(Window(10000).Property(redlight.aiostreams.available),true)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.aiostreams),true)</visible>
                           <visible>![String.IsEmpty(Window(10000).Property(redlight.aiostreams.username)) + String.IsEmpty(Window(10000).Property(redlight.aiostreams.password))]</visible>
+                          <property name="setting_label">Preserve Instance Sort Order</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.aiostreams.preserve_order)]</property>
+                          <property name="setting_description">Keep the order returned by your AIOStreams instance (filters and sorting configured in AIOStreams). Red Light quality, size, and audio filters are skipped for AIO rows when enabled.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=aiostreams.preserve_order)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(60)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.aiostreams.available),true)</visible>
+                          <visible>String.IsEqual(Window(10000).Property(redlight.provider.aiostreams),true)</visible>
+                          <visible>![String.IsEmpty(Window(10000).Property(redlight.aiostreams.username)) + String.IsEmpty(Window(10000).Property(redlight.aiostreams.password))]</visible>
                           <property name="setting_label">Check Before Full Search</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.check.aiostreams)]</property>

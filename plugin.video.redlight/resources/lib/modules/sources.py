@@ -299,9 +299,9 @@ class Sources():
 		if self.active_external:
 			self.debrid_enabled = debrid.debrid_enabled()
 			if not self.debrid_enabled:
-				return self.disable_external('No Debrid Services Enabled' if all(scraper == 'external' for scraper in self.active_internal_scrapers) else 'EN used only')
+				return self.disable_external()
 			self.external_modules = settings.active_external_modules()
-			if not self.external_modules: return self.disable_external('Error Importing External Module')
+			if not self.external_modules: return self.disable_external()
 			self.ext_folder = self.external_modules[0]['module_id']
 			self.ext_name = self.external_modules[0]['folder_name']
 
@@ -475,13 +475,21 @@ class Sources():
 		results = [i for i in results if i not in strip_uncached]
 		cloud_scrapers = ('rd_cloud', 'pm_cloud', 'ad_cloud', 'oc_cloud', 'tb_cloud')
 		cloud_results = [i for i in results if i.get('scrape_provider') in cloud_scrapers]
+		aio_preserve_results = []
+		if self._aiostreams_preserve_order():
+			aio_preserve_results = sorted([i for i in results if i.get('scrape_provider') == 'aiostreams'], key=lambda k: k.get('aio_order', 999999))
+		filter_exempt = cloud_results + aio_preserve_results
 		if self.ignore_scrape_filters: self.filters_ignored = True
 		else:
-			scrape_results = [i for i in results if i not in cloud_results]
+			scrape_results = [i for i in results if i not in filter_exempt]
 			scrape_results = self.filter_results(scrape_results)
 			scrape_results = self.filter_audio(scrape_results)
 			for file_type in self.filter_keys: scrape_results = self.special_filter(scrape_results, file_type)
 			results = scrape_results + cloud_results
+			if aio_preserve_results:
+				non_aio = [self._enrich_sort_fields(i) for i in results if i.get('scrape_provider') != 'aiostreams']
+				aio_block = [self._enrich_sort_fields(i) for i in aio_preserve_results]
+				results = self._merge_aiostreams_at_provider_rank(non_aio, aio_block)
 		if self.prescrape:
 			self.all_scrapers = self.active_internal_scrapers
 			if self.autoplay:
@@ -531,12 +539,16 @@ class Sources():
 		except: pass
 
 	def sort_results(self, results):
-		results = [dict(i, **{
-			'provider_rank': self._get_provider_rank(i['debrid'].lower()), 'quality_rank': self._get_quality_rank(i.get('quality', 'SD')),
-			'size_rank': self._get_size_rank(i)}) for i in results]
-		results.sort(key=self.sort_function)
-		results = self._sort_uncached_results(results)
-		return results
+		aio_block, other = self._split_aiostreams_preserve(results)
+		if other:
+			other = [self._enrich_sort_fields(i) for i in other]
+			other.sort(key=self.sort_function)
+			other = self._sort_uncached_results(other)
+		if aio_block:
+			aio_block = [self._enrich_sort_fields(i) for i in aio_block]
+			if other: return self._merge_aiostreams_at_provider_rank(other, aio_block)
+			return aio_block
+		return other
 
 	def filter_results(self, results):
 		if self.folders_ignore_filters:
@@ -651,12 +663,11 @@ class Sources():
 		return results
 
 	def _sort_with_pref_boost(self, results):
-		results = [dict(i, **{
-			'provider_rank': self._get_provider_rank(i['debrid'].lower()),
-			'quality_rank': self._get_quality_rank(i.get('quality', 'SD')),
-			'size_rank': self._get_size_rank(i)}) for i in results]
+		aio_block, other = self._split_aiostreams_preserve(results)
+		if not other: return aio_block if aio_block else results
+		other = [self._enrich_sort_fields(i) for i in other]
 		groups = {}
-		for item in results:
+		for item in other:
 			groups.setdefault(item['quality_rank'], []).append(item)
 		with_pref_all = []
 		for quality_rank in sorted(groups.keys()):
@@ -670,7 +681,11 @@ class Sources():
 			non_sdr.sort(key=self.sort_function)
 			sdr.sort(key=self.sort_function)
 			without_sorted.extend(non_sdr + sdr)
-		return self._sort_uncached_results(with_pref_all + without_sorted)
+		sorted_other = self._sort_uncached_results(with_pref_all + without_sorted)
+		if aio_block:
+			aio_block = [self._enrich_sort_fields(i) for i in aio_block]
+			return self._merge_aiostreams_at_provider_rank(sorted_other, aio_block)
+		return sorted_other
 
 	def _custom_pref_sort_active(self):
 		return self._pref_sort_should_run()
@@ -765,10 +780,9 @@ class Sources():
 
 	def activate_external_providers(self):
 		self.external_providers = self.external_sources()
-		if not self.external_providers: self.disable_external('No External Providers Enabled')
+		if not self.external_providers: self.disable_external()
 
-	def disable_external(self, line1=''):
-		if line1: kodi_utils.notification(line1, 2000)
+	def disable_external(self):
 		try: self.active_internal_scrapers.remove('external')
 		except: pass
 		self.active_external, self.external_providers = False, []
@@ -848,15 +862,15 @@ class Sources():
 		return ('rd_cloud', 'pm_cloud', 'ad_cloud', 'oc_cloud', 'tb_cloud')
 
 	def _prescrape_autoplay_candidates(self, results):
-		autoplay_scrapers = self._cloud_scrapers() + ('easynews',)
+		autoplay_scrapers = self._cloud_scrapers() + ('easynews', 'aiostreams', 'folders')
 		return [i for i in results if i.get('scrape_provider') in autoplay_scrapers and settings.autoplay_prescrape(i['scrape_provider'])]
 
 	def _is_cloud_result(self, item):
 		return item.get('scrape_provider') in self._cloud_scrapers()
 
 	def _external_autoplay_candidates(self, results):
-		"""Global Autoplay Movie/Episode — external scrapers only, not debrid cloud library rows."""
-		return [i for i in results if not self._is_cloud_result(i)]
+		"""Global Autoplay Movie/Episode — external scrapers only, not debrid cloud / AIO / EN / folders."""
+		return [i for i in results if i.get('scrape_provider') == 'external']
 
 	def _release_empty_prescrape_cloud_scrapers(self):
 		"""Let cloud scrapers run again during full scrape when prescrape found nothing."""
@@ -1340,6 +1354,31 @@ class Sources():
 	def _get_provider_rank(self, account_type):
 		rank = self.provider_sort_ranks.get(account_type)
 		return 11 if rank is None else rank
+
+	def _aiostreams_preserve_order(self):
+		return settings.aiostreams_preserve_order()
+
+	def _enrich_sort_fields(self, item):
+		return dict(item, **{
+			'provider_rank': self._get_provider_rank(item['debrid'].lower()),
+			'quality_rank': self._get_quality_rank(item.get('quality', 'SD')),
+			'size_rank': self._get_size_rank(item)})
+
+	def _split_aiostreams_preserve(self, results):
+		if not self._aiostreams_preserve_order(): return [], results
+		aio = sorted([i for i in results if i.get('scrape_provider') == 'aiostreams'], key=lambda k: k.get('aio_order', 999999))
+		other = [i for i in results if i.get('scrape_provider') != 'aiostreams']
+		return aio, other
+
+	def _merge_aiostreams_at_provider_rank(self, sorted_other, aio_block):
+		if not aio_block: return sorted_other
+		aio_rank = self._get_provider_rank('aiostreams')
+		insert_at = len(sorted_other)
+		for idx, item in enumerate(sorted_other):
+			if item['provider_rank'] > aio_rank:
+				insert_at = idx
+				break
+		return sorted_other[:insert_at] + aio_block + sorted_other[insert_at:]
 
 	def _sort_folder_to_top(self, provider):
 		if provider == 'folders': return 0

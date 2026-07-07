@@ -1,3 +1,10 @@
+[COLOR red][B]Version 1.7.7[/B][/COLOR]
+- [B]AIOStreams[/B]: [B]Preserve Instance Sort Order[/B] ([B]Tools > Settings > Sources Accounts > AIOStreams[/B]) keeps the result order from your AIOStreams instance and skips Red Light quality, size, and audio filters for AIO rows. Enabled by default.
+- [B]AIOStreams[/B]: results suffix row shows the release [B]Group[/B] (e.g. Hone, NTb, Flux) from AIOStreams filename parsing instead of the instance preset name (Viren, Kuu, etc.).
+- [B]Sources[/B]: removed provider skip toasts (e.g. [B]EN used only[/B], [B]AIOStreams used only[/B]) when External Scrapers are dropped — scrape continues silently with whatever direct sources you have enabled.
+- [B]AIOStreams[/B]: fixed source-search crash when [B]Preserve Instance Sort Order[/B] is on ([B]unhashable type: 'dict'[/B] during result filtering).
+- [B]AIOStreams[/B]: fixed left-panel provider label on custom instances showing [B]AIO / AIOStreams[/B] — [B]streamData[/B] fields (debrid service, cached) are merged into each result and generic addon names are ignored so the inner provider (e.g. [B]PM[/B], [B]TB[/B], [B]NZB[/B]) displays correctly.
+
 [COLOR red][B]Version 1.7.6[/B][/COLOR]
 - [B]AIOStreams[/B]: re-enabled as a native Red Light source provider ([B]Tools > Settings > Sources Accounts > AIOStreams[/B]). Uses HTTP Basic Auth (UUID + password from your AIOStreams dashboard) against your chosen instance.
 - [B]AIOStreams[/B]: result parsing ([B]parsedFile[/B] merge, [B]requestHeaders[/B] on direct play, P2P rows skipped). Optional title filter, prescrape, autoplay, and highlight colour unchanged.

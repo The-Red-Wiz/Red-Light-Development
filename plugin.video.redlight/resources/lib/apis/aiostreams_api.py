@@ -146,15 +146,59 @@ def auth():
 	return (username, password)
 
 def flatten_result(raw):
-	"""Merge parsedFile + top-level fields (Magneto player pattern)."""
+	"""Merge streamData, parsedFile, and top-level fields (Magneto player pattern)."""
 	item = dict(raw)
 	item.pop('sources', None)
+	stream_data = item.pop('streamData', None) or {}
+	if not isinstance(stream_data, dict): stream_data = {}
 	parsed = item.pop('parsedFile', None) or {}
 	if not isinstance(parsed, dict): parsed = {}
-	return {**parsed, **item}
+	merged = {**parsed, **stream_data, **item}
+	service = merged.get('service')
+	if isinstance(service, dict) and merged.get('cached') is None and 'cached' in service:
+		merged['cached'] = service.get('cached')
+	return merged
 
 def _norm_source_key(value):
 	return str(value or '').strip().lower().replace(' ', '').replace('_', '').replace('.', '').replace('-', '')
+
+def _service_id(merged):
+	service = merged.get('service')
+	if isinstance(service, dict):
+		return service.get('id') or service.get('name')
+	if service:
+		return service
+	for key in ('serviceId', 'service_id', 'debridService', 'debrid_service'):
+		val = merged.get(key)
+		if val: return val
+	return None
+
+_GENERIC_ADDON_KEYS = frozenset(_norm_source_key(x) for x in (
+	'aiostreams', 'aiostream', 'aio streams', 'aio-streams', 'aio',
+))
+
+def _is_generic_addon_name(value):
+	key = _norm_source_key(value)
+	if not key: return True
+	if key in _GENERIC_ADDON_KEYS: return True
+	return key.startswith('aiostream')
+
+def _addon_id(merged):
+	for key in ('addon', 'addonName', 'addon_name'):
+		val = merged.get(key)
+		if isinstance(val, dict):
+			val = val.get('name') or val.get('id')
+		if val and not _is_generic_addon_name(val):
+			return val
+	return None
+
+def _panel_label(short):
+	return 'AIO / %s' % short
+
+def _short_label(value, limit=8):
+	short = str(value or '').strip().upper()
+	if len(short) > limit: short = short[:limit]
+	return short
 
 _SERVICE_LABELS = (
 	('realdebrid', 'RD', 'Real-Debrid', 'real-debrid'),
@@ -202,38 +246,40 @@ def _label_from_url(url):
 
 def inner_source_display(merged):
 	"""Return (panel_label, short, name, icon_key) for an AIOStreams result row."""
-	service = merged.get('service')
-	if isinstance(service, dict):
-		service = service.get('id') or service.get('name')
-	addon = merged.get('addon')
-	if isinstance(addon, dict):
-		addon = addon.get('name') or addon.get('id')
-	indexer = merged.get('indexer')
+	service = _service_id(merged)
 	if service:
 		match = _lookup_label(service, _SERVICE_LABELS)
 		if match:
 			short, name, icon = match
-			return 'AIO / %s' % short, short, name, icon
-		short = str(service).strip().upper()
-		if len(short) > 8: short = short[:8]
-		return 'AIO / %s' % short, short, str(service), 'aiostreams'
+			return _panel_label(short), short, name, icon
+		short = _short_label(service)
+		return _panel_label(short), short, str(service), 'aiostreams'
+	addon = _addon_id(merged)
 	if addon:
 		match = _lookup_label(addon, _ADDON_LABELS)
 		if match:
 			short, name, icon = match
-			return 'AIO / %s' % short, short, name, icon
+			return _panel_label(short), short, name, icon
 		name = str(addon).strip()
 		short = name if len(name) <= 10 else name[:10]
-		return 'AIO / %s' % short, short, name, 'aiostreams'
+		return _panel_label(short), short, name, 'aiostreams'
+	url_match = _label_from_url(merged.get('url') or merged.get('url_dl') or merged.get('nzbUrl') or '')
+	if url_match:
+		short, name, icon = url_match
+		return _panel_label(short), short, name, icon
+	stream_type = str(merged.get('type') or '').lower()
+	if 'usenet' in stream_type or merged.get('nzbUrl'):
+		match = _lookup_label('stremthru_newz', _SERVICE_LABELS) or _lookup_label('nzbdav', _SERVICE_LABELS)
+		if match:
+			short, name, icon = match
+			return _panel_label(short), short, name, icon
+		return _panel_label('NZB'), 'NZB', 'Usenet', 'aiostreams'
+	indexer = merged.get('indexer')
 	if indexer:
 		name = str(indexer).strip()
 		short = name if len(name) <= 10 else name[:10]
-		return 'AIO / %s' % short, short, name, 'aiostreams'
-	url_match = _label_from_url(merged.get('url') or merged.get('url_dl') or '')
-	if url_match:
-		short, name, icon = url_match
-		return 'AIO / %s' % short, short, name, icon
-	return 'AIO', 'AIO', 'AIOStreams', 'aiostreams'
+		return _panel_label(short), short, name, 'aiostreams'
+	return 'AIO', 'AIO', 'AIO', 'aiostreams'
 
 _TRACKER_SITE_HINTS = (
 	('torrentgalaxy', 'TorrentGalaxy'),
@@ -285,34 +331,70 @@ def _site_from_tracker_entry(entry):
 
 def origin_site_label(raw):
 	"""Indexer / tracker site name for the Site row (TorrentGalaxy, etc.)."""
-	indexer = raw.get('indexer')
+	item = flatten_result(raw) if isinstance(raw, dict) and 'streamData' in raw else raw
+	indexer = item.get('indexer')
 	if indexer:
 		site = _format_site_name(indexer)
 		if site: return site
-	sources = raw.get('sources')
+	sources = item.get('sources')
 	if isinstance(sources, list):
 		for entry in sources:
 			site = _site_from_tracker_entry(entry)
 			if site: return site
-	addon = raw.get('addon')
-	if isinstance(addon, dict): addon = addon.get('name') or addon.get('id')
-	if addon and not raw.get('service'):
+	addon = _addon_id(item)
+	if addon and not _service_id(item):
 		return _format_site_name(addon) or str(addon).strip()
 	return ''
 
 def hoster_label(raw):
 	"""Hoster row label for AIOStreams results."""
-	cached = raw.get('cached')
-	stream_type = str(raw.get('type') or '').lower()
+	item = flatten_result(raw) if isinstance(raw, dict) and 'streamData' in raw else raw
+	cached = item.get('cached')
+	if cached is None:
+		service = item.get('service')
+		if isinstance(service, dict):
+			cached = service.get('cached')
+	stream_type = str(item.get('type') or '').lower()
 	if cached is True:
 		return '[B]CACHED[/B]'
 	if cached is False:
 		return 'UNCACHED'
-	if stream_type in ('usenet', 'stremio-usenet') or raw.get('nzbUrl'):
+	if stream_type in ('usenet', 'stremio-usenet') or item.get('nzbUrl'):
 		return 'USENET'
-	if stream_type == 'p2p' or raw.get('infoHash'):
+	if stream_type == 'p2p' or item.get('infoHash'):
+		return 'TORRENT'
+	torrent = item.get('torrent')
+	if isinstance(torrent, dict) and torrent.get('infoHash'):
 		return 'TORRENT'
 	return 'DIRECT'
+
+def _release_group_from_filename(filename):
+	import re
+	base = str(filename or '').strip()
+	if not base: return ''
+	base = re.sub(r'\.(mkv|mp4|avi|m4v|ts|m2ts|wmv|webm)$', '', base, flags=re.I)
+	match = re.search(r'[-\.]([A-Za-z0-9]{2,12})$', base)
+	if not match: return ''
+	candidate = match.group(1)
+	noise = {
+		'1080p', '720p', '2160p', '1440p', '480p', '576p', '4k', 'uhd', 'hd', 'sd', 'web', 'webdl', 'webrip', 'webdlrip',
+		'bluray', 'blu', 'ray', 'remux', 'h264', 'h265', 'x264', 'x265', 'hevc', 'avc', 'aac', 'ddp', 'dts', 'atmos',
+		'proper', 'repack', 'internal', 'subs', 'subbed', 'dubbed',
+	}
+	if candidate.lower() in noise: return ''
+	return candidate
+
+def release_group_label(merged, filename=''):
+	"""Scene/release group from AIO parsedFile (Hone, NTb, Flux, etc.)."""
+	for key in ('releaseGroup', 'releasegroup', 'group'):
+		val = merged.get(key)
+		if val and str(val).strip(): return str(val).strip()
+	parsed = merged.get('parsedFile')
+	if isinstance(parsed, dict):
+		for key in ('releaseGroup', 'releasegroup', 'group'):
+			val = parsed.get(key)
+			if val and str(val).strip(): return str(val).strip()
+	return _release_group_from_filename(filename or merged.get('filename') or merged.get('name') or '')
 
 def playback_headers(item):
 	headers = item.get('request_headers') or item.get('requestHeaders')

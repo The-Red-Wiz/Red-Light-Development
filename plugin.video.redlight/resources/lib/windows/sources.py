@@ -261,10 +261,10 @@ class SourcesResults(BaseDialog):
 						scraper_module_label = 'Scraper'
 						scraper_suffix = '     [COLOR %s][B]Scraper: [/B][/COLOR]%s' % (item_highlight, scraper_module.upper())
 				elif scrape_provider == 'aiostreams':
-					scraper_module = get('aio_instance_name') or ''
+					scraper_module = get('aio_release_group') or ''
 					if scraper_module:
-						scraper_module_label = 'Instance'
-						scraper_suffix = '     [COLOR %s][B]Instance: [/B][/COLOR]%s' % (item_highlight, scraper_module.upper())
+						scraper_module_label = 'Group'
+						scraper_suffix = '     [COLOR %s][B]Group: [/B][/COLOR]%s' % (item_highlight, scraper_module.upper())
 				set_properties({'name': name.upper(), 'source_site': source_site, 'provider_icon': provider_icon, 'quality_icon': quality_icon, 'count': '%02d.' % count,
 						'size_label': get('size_label', 'N/A'), 'extraInfo': extraInfo, 'quality': quality.upper(), 'hash': get('hash', 'N/A'), 'source': json.dumps(item),
 						'highlight': item_highlight, 'highlight_bg': highlight_bg, 'scraper_module': scraper_module.upper() if scraper_module else '', 'scraper_module_label': scraper_module_label,

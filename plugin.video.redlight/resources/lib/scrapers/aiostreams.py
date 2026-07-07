@@ -33,7 +33,7 @@ class source:
 			raw_count = len(scrape_results)
 			skipped = {'p2p': 0, 'no_name': 0, 'extras': 0, 'title_filter': 0, 'no_url': 0, 'exception': 0}
 			def _process():
-				for raw in scrape_results:
+				for aio_order, raw in enumerate(scrape_results):
 					try:
 						merged = aiostreams_api.flatten_result(raw)
 						if 'p2p' in (merged.get('type') or '').lower():
@@ -68,9 +68,9 @@ class source:
 							elif res_key == 'SD': video_quality = 'SD'
 						request_headers = aiostreams_api.playback_headers(merged)
 						panel_label, aio_short, aio_name, aio_icon = aiostreams_api.inner_source_display(merged)
-						site_name = aiostreams_api.origin_site_label(raw)
-						hoster = aiostreams_api.hoster_label(raw)
-						instance_name = aiostreams_api.active_instance_label()
+						site_name = aiostreams_api.origin_site_label(merged)
+						hoster = aiostreams_api.hoster_label(merged)
+						release_group = aiostreams_api.release_group_label(merged, file_name)
 						extra_tags = []
 						for key in ('encode', 'quality'):
 							val = merged.get(key)
@@ -82,8 +82,8 @@ class source:
 							details = '%s | %s' % (details, tag_line) if details else tag_line
 						source_item = {'name': file_name, 'display_name': display_name, 'quality': video_quality, 'size': size,
 									'size_label': '%.2f GB' % size if size else 'N/A', 'debrid': self.scrape_provider, 'source': self.scrape_provider,
-									'aio_source_label': panel_label, 'aio_source': aio_short, 'aio_source_name': aio_name, 'aio_source_icon': aio_icon,
-									'aio_site_name': site_name, 'aio_hoster': hoster, 'aio_instance_name': instance_name,
+									'aio_order': aio_order, 'aio_source_label': panel_label, 'aio_source': aio_short, 'aio_source_name': aio_name, 'aio_source_icon': aio_icon,
+									'aio_site_name': site_name, 'aio_hoster': hoster, 'aio_release_group': release_group,
 									'extraInfo': details, 'url_dl': url, 'url': url, 'id': url, 'direct': True, 'local': False,
 									'scrape_provider': self.scrape_provider, 'request_headers': request_headers}
 						yield source_item
