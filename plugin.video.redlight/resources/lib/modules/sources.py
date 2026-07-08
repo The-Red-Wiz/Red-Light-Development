@@ -488,6 +488,8 @@ class Sources():
 			results = scrape_results + cloud_results
 			if aio_preserve_results:
 				non_aio = [self._enrich_sort_fields(i) for i in results if i.get('scrape_provider') != 'aiostreams']
+				non_aio.sort(key=self.sort_function)
+				non_aio = self._sort_uncached_results(non_aio)
 				aio_block = [self._enrich_sort_fields(i) for i in aio_preserve_results]
 				results = self._merge_aiostreams_at_provider_rank(non_aio, aio_block)
 		if self.prescrape:
@@ -666,13 +668,18 @@ class Sources():
 		aio_block, other = self._split_aiostreams_preserve(results)
 		if not other: return aio_block if aio_block else results
 		other = [self._enrich_sort_fields(i) for i in other]
+		aio_pref, aio_nonpref = [], []
+		if aio_block:
+			aio_block = [self._enrich_sort_fields(i) for i in aio_block]
+			aio_pref = [i for i in aio_block if i.get('pref_includes', 0) > 0]
+			aio_nonpref = [i for i in aio_block if i.get('pref_includes', 0) == 0]
 		groups = {}
 		for item in other:
 			groups.setdefault(item['quality_rank'], []).append(item)
-		with_pref_all = []
+		with_pref_all = list(aio_pref)
 		for quality_rank in sorted(groups.keys()):
 			with_pref_all.extend([i for i in groups[quality_rank] if i.get('pref_includes', 0) > 0])
-		with_pref_all.sort(key=lambda k: (-k.get('pref_includes', 0), k['quality_rank']) + self.sort_function(k)[1:])
+		with_pref_all.sort(key=self._pref_boost_sort_key)
 		without_sorted = []
 		for quality_rank in sorted(groups.keys()):
 			without_pref = [i for i in groups[quality_rank] if i.get('pref_includes', 0) == 0]
@@ -682,10 +689,14 @@ class Sources():
 			sdr.sort(key=self.sort_function)
 			without_sorted.extend(non_sdr + sdr)
 		sorted_other = self._sort_uncached_results(with_pref_all + without_sorted)
-		if aio_block:
-			aio_block = [self._enrich_sort_fields(i) for i in aio_block]
-			return self._merge_aiostreams_at_provider_rank(sorted_other, aio_block)
+		if aio_nonpref:
+			return self._merge_aiostreams_at_provider_rank(sorted_other, aio_nonpref)
 		return sorted_other
+
+	def _pref_boost_sort_key(self, item):
+		if item.get('scrape_provider') == 'aiostreams' and self._aiostreams_preserve_order():
+			return (-item.get('pref_includes', 0), item['quality_rank'], item.get('aio_order', 999999))
+		return (-item.get('pref_includes', 0),) + self.sort_function(item)
 
 	def _custom_pref_sort_active(self):
 		return self._pref_sort_should_run()
@@ -1373,13 +1384,30 @@ class Sources():
 
 	def _merge_aiostreams_at_provider_rank(self, sorted_other, aio_block):
 		if not aio_block: return sorted_other
+		if not sorted_other: return aio_block
 		aio_rank = self._get_provider_rank('aiostreams')
-		insert_at = len(sorted_other)
-		for idx, item in enumerate(sorted_other):
-			if item['provider_rank'] > aio_rank:
-				insert_at = idx
-				break
-		return sorted_other[:insert_at] + aio_block + sorted_other[insert_at:]
+		other_by_quality, aio_by_quality = {}, {}
+		for item in sorted_other:
+			other_by_quality.setdefault(item['quality_rank'], []).append(item)
+		for item in aio_block:
+			aio_by_quality.setdefault(item['quality_rank'], []).append(item)
+		merged = []
+		for quality_rank in sorted(set(other_by_quality) | set(aio_by_quality)):
+			band = other_by_quality.get(quality_rank, [])
+			aio_in_band = aio_by_quality.get(quality_rank, [])
+			if not aio_in_band:
+				merged.extend(band)
+				continue
+			if not band:
+				merged.extend(aio_in_band)
+				continue
+			insert_at = len(band)
+			for idx, item in enumerate(band):
+				if item['provider_rank'] > aio_rank:
+					insert_at = idx
+					break
+			merged.extend(band[:insert_at] + aio_in_band + band[insert_at:])
+		return merged
 
 	def _sort_folder_to_top(self, provider):
 		if provider == 'folders': return 0

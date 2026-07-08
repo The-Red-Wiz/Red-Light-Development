@@ -217,6 +217,16 @@ def _is_usenet_stream(merged):
 	stream_type = str(merged.get('type') or '').lower()
 	return 'usenet' in stream_type or bool(merged.get('nzbUrl'))
 
+_DEBRID_CACHE_HOSTER_TOKENS = frozenset(_norm_source_key(x) for x in (
+	'realdebrid', 'alldebrid', 'premiumize', 'torbox', 'offcloud',
+	'easydebrid', 'debrider', 'debridlink',
+))
+
+def _hoster_uses_debrid_cache(merged):
+	service = _service_id(merged)
+	if not service: return False
+	return _norm_source_key(service) in _DEBRID_CACHE_HOSTER_TOKENS
+
 def _debrid_short(short, merged):
 	if _is_cached(merged):
 		return '%s+' % short
@@ -375,18 +385,20 @@ def origin_site_label(raw):
 def hoster_label(raw):
 	"""Hoster row label for AIOStreams results."""
 	item = flatten_result(raw) if isinstance(raw, dict) and 'streamData' in raw else raw
+	if _service_id(item) and not _hoster_uses_debrid_cache(item):
+		return 'DIRECT'
+	if _is_usenet_stream(item) and not _hoster_uses_debrid_cache(item):
+		return 'USENET'
 	cached = item.get('cached')
 	if cached is None:
 		service = item.get('service')
 		if isinstance(service, dict):
 			cached = service.get('cached')
-	stream_type = str(item.get('type') or '').lower()
 	if cached is True:
 		return '[B]CACHED[/B]'
 	if cached is False:
 		return 'UNCACHED'
-	if stream_type in ('usenet', 'stremio-usenet') or item.get('nzbUrl'):
-		return 'USENET'
+	stream_type = str(item.get('type') or '').lower()
 	if stream_type == 'p2p' or item.get('infoHash'):
 		return 'TORRENT'
 	torrent = item.get('torrent')

@@ -1,3 +1,7 @@
+[COLOR red][B]Version 1.7.9[/B][/COLOR]
+- [B]AIOStreams[/B]: Hoster row — [B]USENET[/B] for usenet-only [B]AIO+[/B] streams; [B]DIRECT[/B] for EasyNews and other non-debrid services (even when AIO tags the stream as usenet); [B]CACHED[/B]/[B]UNCACHED[/B] only for torrent debrid (TB, PM, RD, etc.).
+- [B]Results[/B]: fixed [B]Set Filters for Sort to Top[/B] dialog title (was garbled Fen Light wording); now reads [B]Choose Sort To Top Parameters[/B].
+
 [COLOR red][B]Version 1.7.8[/B][/COLOR]
 - [B]Autoscrape Next Episode[/B] (diagnostics): [B]kodi.log[/B] lines tagged [B]NextEpResolve[/B] when background next-episode prep resolves a source — logs [B]play_type[/B], [B]background[/B], [B]self[/B]/[B]meta[/B]/[B]search_info[/B]/[B]get_season[/B] S/E, debrid hash prefix, pack flag, and resolved CDN id (for correlation with [B]VideoPlayer::OpenFile[/B]). No behaviour change.
 - [B]Autoscrape Next Episode[/B]: with [B]Confirm Before Autoscrape[/B] enabled, [B]Next Episode Ready[/B] shows as soon as the background scrape finishes after you tap [B]Yes[/B] (while credits are still rolling). Without confirm, the ready toast still waits for the alert window only.
