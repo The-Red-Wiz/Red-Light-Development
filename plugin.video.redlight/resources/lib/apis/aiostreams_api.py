@@ -153,7 +153,9 @@ def flatten_result(raw):
 	if not isinstance(stream_data, dict): stream_data = {}
 	parsed = item.pop('parsedFile', None) or {}
 	if not isinstance(parsed, dict): parsed = {}
-	merged = {**parsed, **stream_data, **item}
+	info = item.pop('info', None) or {}
+	if not isinstance(info, dict): info = {}
+	merged = {**parsed, **stream_data, **info, **item}
 	service = merged.get('service')
 	if isinstance(service, dict) and merged.get('cached') is None and 'cached' in service:
 		merged['cached'] = service.get('cached')
@@ -163,14 +165,22 @@ def _norm_source_key(value):
 	return str(value or '').strip().lower().replace(' ', '').replace('_', '').replace('.', '').replace('-', '')
 
 def _service_id(merged):
+	def _valid_service(val):
+		return val and not _is_generic_addon_name(val)
 	service = merged.get('service')
 	if isinstance(service, dict):
-		return service.get('id') or service.get('name')
-	if service:
+		val = service.get('id') or service.get('name')
+		if _valid_service(val): return val
+	elif _valid_service(service):
 		return service
 	for key in ('serviceId', 'service_id', 'debridService', 'debrid_service'):
 		val = merged.get(key)
-		if val: return val
+		if _valid_service(val): return val
+	info = merged.get('info')
+	if isinstance(info, dict):
+		for key in ('debridService', 'debrid_service', 'service', 'serviceId', 'service_id'):
+			val = info.get(key)
+			if _valid_service(val): return val
 	return None
 
 _GENERIC_ADDON_KEYS = frozenset(_norm_source_key(x) for x in (
@@ -194,6 +204,27 @@ def _addon_id(merged):
 
 def _panel_label(short):
 	return 'AIO / %s' % short
+
+def _is_cached(merged):
+	cached = merged.get('cached')
+	if cached is None:
+		service = merged.get('service')
+		if isinstance(service, dict):
+			cached = service.get('cached')
+	return cached is True
+
+def _is_usenet_stream(merged):
+	stream_type = str(merged.get('type') or '').lower()
+	return 'usenet' in stream_type or bool(merged.get('nzbUrl'))
+
+def _debrid_short(short, merged):
+	if _is_cached(merged):
+		return '%s+' % short
+	return short
+
+def _aio_debrid_badge(short, name, icon, merged):
+	short = _debrid_short(short, merged)
+	return _panel_label(short), short, name, icon
 
 def _short_label(value, limit=8):
 	short = str(value or '').strip().upper()
@@ -251,9 +282,11 @@ def inner_source_display(merged):
 		match = _lookup_label(service, _SERVICE_LABELS)
 		if match:
 			short, name, icon = match
-			return _panel_label(short), short, name, icon
-		short = _short_label(service)
+			return _aio_debrid_badge(short, name, icon, merged)
+		short = _debrid_short(_short_label(service, 10), merged)
 		return _panel_label(short), short, str(service), 'aiostreams'
+	if _is_usenet_stream(merged):
+		return 'AIO+', 'AIO+', 'Usenet', 'aiostreams'
 	addon = _addon_id(merged)
 	if addon:
 		match = _lookup_label(addon, _ADDON_LABELS)
@@ -267,13 +300,6 @@ def inner_source_display(merged):
 	if url_match:
 		short, name, icon = url_match
 		return _panel_label(short), short, name, icon
-	stream_type = str(merged.get('type') or '').lower()
-	if 'usenet' in stream_type or merged.get('nzbUrl'):
-		match = _lookup_label('stremthru_newz', _SERVICE_LABELS) or _lookup_label('nzbdav', _SERVICE_LABELS)
-		if match:
-			short, name, icon = match
-			return _panel_label(short), short, name, icon
-		return _panel_label('NZB'), 'NZB', 'Usenet', 'aiostreams'
 	indexer = merged.get('indexer')
 	if indexer:
 		name = str(indexer).strip()

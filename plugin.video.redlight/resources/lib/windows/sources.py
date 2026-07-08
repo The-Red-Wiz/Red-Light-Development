@@ -322,7 +322,8 @@ class SourcesResults(BaseDialog):
 			try: return (0, provider_choices.index(key))
 			except ValueError: pass
 			if key.startswith('AIO /'):
-				mapped = _aio_inner_to_choice.get(key.replace('AIO /', '').strip())
+				inner = key.replace('AIO /', '').strip().rstrip('+')
+				mapped = _aio_inner_to_choice.get(inner)
 				if mapped in provider_choices:
 					return (0, provider_choices.index(mapped))
 				return (1, key)

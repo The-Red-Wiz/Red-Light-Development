@@ -999,6 +999,7 @@ class Sources():
 				return
 			elif action == 'play':
 				kodi_utils.clear_property(PROP_RESOLVE_CANCEL)
+				self._log_nextep_resolve_diag(chosen_item, phase='pick')
 				self.play_file(results, chosen_item)
 				return
 			elif self.prescrape and action == 'perform_full_search':
@@ -1827,6 +1828,7 @@ class Sources():
 			retry_easynews_limit = settings.easynews_playback_method_retries()
 			kodi_utils.hide_busy_dialog()
 			if not source: source = playable_results[0]
+			self._log_nextep_resolve_diag(source, phase='play_start')
 			items = [source]
 			if not self.limit_resolve:
 				source_index = playable_results.index(source)
@@ -2025,6 +2027,66 @@ class Sources():
 				self.meta.get('title'), self.meta.get('season'), self.meta.get('episode'), self.play_type))
 		except: pass
 
+	def _nextep_resolve_diag_enabled(self):
+		if self.play_type in ('autoplay_nextep', 'autoscrape_nextep', 'random_continual'):
+			return True
+		if self.background or getattr(self, '_nextep_stash_results', None):
+			return True
+		if getattr(self, '_nextep_alert_handled', False):
+			return True
+		return False
+
+	def _fmt_nextep_se(self, season, episode):
+		try:
+			if season in (None, '') or episode in (None, ''):
+				return '-'
+			return 'S%02dE%02d' % (int(season), int(episode))
+		except:
+			return 'S%sE%s' % (season, episode)
+
+	def _nextep_resolve_url_id(self, url):
+		if not url or not isinstance(url, str):
+			return ''
+		try:
+			for part in url.split('/'):
+				token = (part or '').split('?')[0]
+				if len(token) >= 32 and '-' in token:
+					return token[:36]
+		except:
+			pass
+		return ''
+
+	def _log_nextep_resolve_diag(self, item=None, phase='resolve', url=None, resolve_se=None):
+		if not self._nextep_resolve_diag_enabled():
+			return
+		try:
+			meta = self.meta or {}
+			si = getattr(self, 'search_info', None) or {}
+			item = item or {}
+			resolve_label = ''
+			if resolve_se:
+				resolve_label = self._fmt_nextep_se(resolve_se[0], resolve_se[1])
+			kodi_utils.logger('NextEpResolve', '%s phase=%s play_type=%s background=%s autoplay=%s autoscrape=%s self=%s meta=%s custom=%s search_info=%s get=%s resolve=%s provider=%s hash=%s pack=%s name=%s url_id=%s' % (
+				meta.get('title', ''),
+				phase,
+				self.play_type or '',
+				self.background,
+				self.autoplay_nextep,
+				self.autoscrape_nextep,
+				self._fmt_nextep_se(self.season, self.episode),
+				self._fmt_nextep_se(meta.get('season'), meta.get('episode')),
+				self._fmt_nextep_se(meta.get('custom_season'), meta.get('custom_episode')),
+				self._fmt_nextep_se(si.get('season'), si.get('episode')),
+				self._fmt_nextep_se(self.get_season(), self.get_episode()),
+				resolve_label,
+				(item.get('debrid') or item.get('cache_provider') or '')[:24],
+				(item.get('hash') or '')[:8],
+				'package' in item,
+				(item.get('display_name') or item.get('name') or '')[:72],
+				self._nextep_resolve_url_id(url),
+			))
+		except: pass
+
 	def _prefetch_intro_segment_async(self):
 		if self.media_type != 'episode':
 			return
@@ -2094,6 +2156,24 @@ class Sources():
 		kodi_utils.clear_property(PROP_AUTOSCRAPE_NEXTEP_READY)
 		kodi_utils.notification('[B]Next Episode Ready:[/B] %s S%02dE%02d' \
 				% (meta.get('title'), meta.get('season'), meta.get('episode')), 6500, meta.get('poster') or None)
+
+	def _sync_autoscrape_ready_notified_player(self):
+		try:
+			player = kodi_utils.kodi_player()
+			if isinstance(player, RedLightPlayer):
+				player._autoscrape_ready_notified = True
+		except:
+			pass
+
+	def _notify_autoscrape_ready_immediate(self, remaining, window_time):
+		if getattr(self, '_autoscrape_ready_notified', False):
+			return
+		kodi_utils.logger('Red Light', 'Autoscrape next episode ready (confirm): %s S%02dE%02d remaining=%ss alert_window=%ss' % (
+			self.meta.get('title'), self.meta.get('season'), self.meta.get('episode'), remaining, window_time))
+		self._autoscrape_ready_notified = True
+		self._mark_autoscrape_nextep_ready()
+		self._show_autoscrape_ready_notification()
+		self._sync_autoscrape_ready_notified_player()
 
 	def _notify_autoscrape_ready(self, remaining, window_time):
 		kodi_utils.logger('Red Light', 'Autoscrape next episode ready: %s S%02dE%02d remaining=%ss alert_window=%ss' % (
@@ -2183,10 +2263,12 @@ class Sources():
 		kodi_utils.logger('Red Light', 'Next episode prep declined: %s' % reason)
 
 	def autoscrape_nextep_handler(self):
+		autoscrape_confirmed = False
 		if settings.autoscrape_confirm():
 			if not self._make_still_watching_dialog('Autoscrape Next Episode of [B]%s[/B]?', heading='Autoscrape Next Episode?', right_align=True):
 				self._decline_nextep_prep('autoscrape confirm')
 				return
+			autoscrape_confirmed = True
 		player = kodi_utils.kodi_player()
 		if not self._player_episode_active(player):
 			return
@@ -2207,7 +2289,9 @@ class Sources():
 				kodi_utils.logger('Red Light', 'Autoscrape next episode ready (stopped during scrape): %s S%02dE%02d remaining=%ss alert_window=%ss' % (
 					self.meta.get('title'), self.meta.get('season'), self.meta.get('episode'), remaining, window_time))
 			return self.display_results(results)
-		if remaining is not None and remaining <= int(window_time):
+		if autoscrape_confirmed:
+			self._notify_autoscrape_ready_immediate(remaining, window_time)
+		elif remaining is not None and remaining <= int(window_time):
 			self._notify_autoscrape_ready(remaining, window_time)
 		else:
 			remaining, should_notify = self._wait_autoscrape_pop_window(player, window_time)
@@ -2246,7 +2330,9 @@ class Sources():
 					else: title, season, episode, pack = self.get_ep_name(), self.get_season(), self.get_episode(), 'package' in item
 				else: title, season, episode, pack = self.get_search_title(), None, None, False
 				if cache_provider in ('Real-Debrid', 'Premiumize.me', 'AllDebrid', 'Offcloud', 'TorBox'):
+					self._log_nextep_resolve_diag(item, phase='resolve', resolve_se=(season, episode))
 					url = self.resolve_cached(cache_provider, item['url'], item['hash'], title, season, episode, pack)
+					self._log_nextep_resolve_diag(item, phase='resolved', url=url, resolve_se=(season, episode))
 			else: url = item['url']
 		except: pass
 		if self._user_cancelled_resolve():

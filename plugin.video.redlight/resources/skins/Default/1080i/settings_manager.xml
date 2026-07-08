@@ -2024,13 +2024,14 @@
                           <property name="setting_label">Instance</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.aiostreams.instance_name)]</property>
-                          <property name="setting_description">Each preset shows its base URL in the picker and in this row. UUID and password are remembered per instance when you switch presets. Custom instances are not supported.</property>
+                          <property name="setting_description">Each preset shows its base URL in the picker and below. UUID and password are remembered per instance when you switch presets. Choose Custom to enter your own base URL.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_from_list&amp;setting_id=aiostreams.instance)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(60)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.aiostreams.available),true)</visible>
                           <visible>String.IsEqual(Window(10000).Property(redlight.provider.aiostreams),true)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.aiostreams.instance),4)</visible>
                           <property name="setting_label">    - Active base URL</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.aiostreams.base_url)]</property>

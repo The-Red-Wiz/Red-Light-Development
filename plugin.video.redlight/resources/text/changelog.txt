@@ -1,3 +1,11 @@
+[COLOR red][B]Version 1.7.8[/B][/COLOR]
+- [B]Autoscrape Next Episode[/B] (diagnostics): [B]kodi.log[/B] lines tagged [B]NextEpResolve[/B] when background next-episode prep resolves a source — logs [B]play_type[/B], [B]background[/B], [B]self[/B]/[B]meta[/B]/[B]search_info[/B]/[B]get_season[/B] S/E, debrid hash prefix, pack flag, and resolved CDN id (for correlation with [B]VideoPlayer::OpenFile[/B]). No behaviour change.
+- [B]Autoscrape Next Episode[/B]: with [B]Confirm Before Autoscrape[/B] enabled, [B]Next Episode Ready[/B] shows as soon as the background scrape finishes after you tap [B]Yes[/B] (while credits are still rolling). Without confirm, the ready toast still waits for the alert window only.
+- [B]Notifications[/B]: Red Light toasts (including [B]Next Episode Ready[/B] / [B]Next Up[/B] during playback) no longer play the Kodi notification sound.
+- [B]AIOStreams[/B]: when [B]Instance[/B] is [B]Custom[/B], the read-only [B]Active base URL[/B] row is hidden — only [B]Custom URL[/B] appears in that slot (no duplicate URL rows).
+- [B]AIOStreams[/B]: fixed left-panel badge on custom instances still showing [B]AIO / AIOStreams[/B] — generic [B]service[/B] ids from the API are now ignored (same as addon names) so the inner debrid/indexer label ([B]PM[/B], [B]TB[/B], [B]NZB[/B], etc.) is used; [B]info[/B] blocks are merged when present.
+- [B]AIOStreams[/B]: left-panel badge follows AIO Streams convention — [B]AIO / TB+[/B] cached debrid, [B]AIO / TB[/B] uncached, [B]AIO+[/B] for usenet-only streams (no debrid service).
+
 [COLOR red][B]Version 1.7.7[/B][/COLOR]
 - [B]AIOStreams[/B]: [B]Preserve Instance Sort Order[/B] ([B]Tools > Settings > Sources Accounts > AIOStreams[/B]) keeps the result order from your AIOStreams instance and skips Red Light quality, size, and audio filters for AIO rows. Enabled by default.
 - [B]AIOStreams[/B]: results suffix row shows the release [B]Group[/B] (e.g. Hone, NTb, Flux) from AIOStreams filename parsing instead of the instance preset name (Viren, Kuu, etc.).
