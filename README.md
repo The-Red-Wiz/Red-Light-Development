@@ -4,5 +4,5 @@ A kodi.log is required for any bug reports (Red Light > Tools > Changelog & Log 
 <img width="200" height="200" alt="icon" src="https://github.com/user-attachments/assets/041e7550-b9c7-48dd-b60a-af9ebfd23a1f" /><br/><br/>
 To install Red Wizard plugins, go to...<br/><br/>
 https://repo.redwizard.xyz/<br/><br/>
-Red Light, Gratis Red and MP3 Streams Telegram support group (publicly visible profile pic needed)...<br/><br/>
+Red Light, Gratis Red and MP3 Streams Telegram support group (visible profile pic required)...<br/><br/>
 https://t.me/+X-lt1ZDii3I3YjA0
