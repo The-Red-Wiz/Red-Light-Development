@@ -216,14 +216,13 @@ def show_nextep_handoff_cover(meta=None):
 		return False
 	if not arm_nextep_handoff_cover(meta):
 		return False
-	_HANDOFF_COVER_SHOWN = True
 	try:
-		_HANDOFF_COVER_THREAD = Thread(target=_HANDOFF_COVER.run)
-		_HANDOFF_COVER_THREAD.start()
-		for _ in range(40):
+		_HANDOFF_COVER.show()
+		_HANDOFF_COVER_SHOWN = True
+		for _ in range(20):
 			if kodi_utils.get_property(PROP_NEXTEP_HANDOFF_VISIBLE) == 'true':
 				break
-			kodi_utils.sleep(25)
+			kodi_utils.sleep(10)
 		kodi_utils.logger('Red Light', 'Autoscrape handoff cover shown')
 		return True
 	except Exception as e:
@@ -259,6 +258,15 @@ def close_nextep_handoff_cover():
 			thread.join(timeout=1.0)
 		except Exception:
 			pass
+
+def dismiss_nextep_handoff_cover_keep_armed():
+	# Cover must not sit over playing video. If it did and the user Backs,
+	# drop the overlay only — Stop should still be a handoff.
+	payload = _load_handoff_meta()
+	close_nextep_handoff_cover()
+	if payload:
+		_store_handoff_meta(payload)
+		arm_nextep_handoff_cover(payload)
 
 def nextep_handoff_cancelled():
 	return nextep_autoplay_cancelled() or kodi_utils.get_property('redlight.nextep_prep_declined') == 'true'

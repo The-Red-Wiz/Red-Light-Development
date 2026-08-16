@@ -38,15 +38,23 @@ class NextepHandoffCover(BaseDialog):
 		set_property(PROP_HANDOFF_VISIBLE, 'true')
 
 	def run(self):
-		self.doModal()
-		clear_property(PROP_HANDOFF_VISIBLE)
-		self.clearProperties()
+		# Non-modal: results / resolve doModal on top without closing this cover.
+		self.show()
+		set_property(PROP_HANDOFF_VISIBLE, 'true')
 
 	def onAction(self, action):
 		if action not in self.closing_actions:
 			return
 		# Results owns Back once it is up. Cover-only Back cancels the handoff.
 		if get_visibility('Window.IsVisible(sources_results.xml)') or get_visibility('Window.IsVisible(sources_playback.xml)'):
+			return
+		# Still playing: this overlay should not be up. Dismiss it; do not cancel.
+		if get_visibility('Window.IsActive(fullscreenvideo)'):
+			try:
+				from modules.sources import dismiss_nextep_handoff_cover_keep_armed
+				dismiss_nextep_handoff_cover_keep_armed()
+			except Exception:
+				self.close()
 			return
 		try:
 			from modules.sources import mark_nextep_autoplay_cancelled

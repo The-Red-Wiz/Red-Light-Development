@@ -48,6 +48,36 @@ class RedLightPlayer(xbmc.Player):
 			return True
 		return ku.get_property(PROP_RESOLVE_CANCEL) == 'true'
 
+	def _autoscrape_handoff_ready(self):
+		# Toast is only the last alert window. Confirm + finished scrape already
+		# arms Ready (PROP set) — Stop then is a handoff, not "stopped early".
+		try:
+			if ku.get_property(ku.PROP_AUTOSCRAPE_TOAST_SHOWN) == 'true':
+				return True
+			ready = ku.get_property(PROP_AUTOSCRAPE_NEXTEP_READY)
+			return bool(ready) and ready != 'false'
+		except Exception:
+			return False
+
+	def _maybe_show_nextep_handoff_cover(self):
+		if not getattr(self, 'autoscrape_nextep', False):
+			return
+		if not self._autoscrape_handoff_ready():
+			return
+		try:
+			from modules.sources import nextep_handoff_cancelled, show_nextep_handoff_cover
+			if nextep_handoff_cancelled():
+				return
+			show_nextep_handoff_cover()
+		except Exception:
+			pass
+
+	def onPlayBackStopped(self):
+		self._maybe_show_nextep_handoff_cover()
+
+	def onPlayBackEnded(self):
+		self._maybe_show_nextep_handoff_cover()
+
 	def run(self, url=None, obj=None):
 		ku.hide_busy_dialog()
 		self.clear_playback_properties(clear_navigation=False)
@@ -417,7 +447,7 @@ class RedLightPlayer(xbmc.Player):
 				natural_end = (not playback_superseded and _remaining is not None and _remaining <= _NEXTEP_NATURAL_END_SEC)
 				# After Next Episode Ready, Stop in credits is a deliberate handoff (1.8.2
 				# "natural end only" was too strict vs subtitle/IntroDB alert windows).
-				ready_fired = ku.get_property(ku.PROP_AUTOSCRAPE_TOAST_SHOWN) == 'true'
+				ready_fired = self._autoscrape_handoff_ready()
 				if self.autoscrape_nextep and not playback_superseded:
 					if natural_end or ready_fired:
 						ku.set_property(PROP_NEXTEP_NATURAL_END, 'true')
