@@ -10,6 +10,10 @@ from modules import kodi_utils
 from modules.utils import clean_file_name
 # logger = kodi_utils.logger
 
+def _thumb_url(url, fallback):
+	thumb = EasyNews.auth_thumb(url or fallback) or fallback
+	return thumb
+
 def search_easynews_image(key_id=None):
 	return Images().run({'mode': 'easynews_image_results', 'key_id': unquote(key_id), 'page_no': 1})
 
@@ -21,9 +25,9 @@ def search_easynews(params):
 		files = EasyNews.search(search_name)
 		easynews_file_browser(files, handle)
 	except: pass
-	kodi_utils.set_content(handle, kodi_utils.MENU_FOLDER_CONTENT)
+	kodi_utils.set_content(handle, kodi_utils.PREMIUM_FILES_CONTENT)
 	kodi_utils.end_directory(handle, cacheToDisc=False)
-	kodi_utils.set_view_mode('view.premium', kodi_utils.MENU_FOLDER_CONTENT)
+	kodi_utils.set_view_mode('view.premium', kodi_utils.PREMIUM_FILES_CONTENT)
 
 def easynews_file_browser(files, handle):
 	def _builder():
@@ -50,10 +54,10 @@ def easynews_file_browser(files, handle):
 				listitem = kodi_utils.make_listitem()
 				listitem.setLabel(display)
 				listitem.addContextMenuItems(cm)
-				thumbnail = item_get('thumbnail', icon)
-				listitem.setArt({'icon': thumbnail, 'poster': thumbnail, 'thumb': thumbnail, 'fanart': fanart, 'banner': icon})
-				info_tag = listitem.getVideoInfoTag(True)
+				thumbnail = _thumb_url(item_get('thumbnail'), icon)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setPlot(' ')
+				kodi_utils.set_list_item_art(listitem, thumbnail, fanart=fanart)
 				yield (url, listitem, False)
 			except: pass
 	icon = kodi_utils.get_icon('easynews')

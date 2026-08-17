@@ -41,6 +41,30 @@ class EasyNewsAPI:
 	def _maybe_reload_credentials(self):
 		if easynews_refresh_credentials(): self._reload_credentials()
 
+	def thumb_url(self, post_hash, kind='pr'):
+		# Fen classic: item hash has a 4-char suffix that is not in the CDN filename.
+		# Wrong name returns 403 (not 404), which looks like an auth failure.
+		if not post_hash: return ''
+		name = post_hash[:-4] if len(post_hash) > 4 else post_hash
+		return 'https://th.easynews.com/thumbnails-%s/%s-%s.jpg' % (post_hash[0:3], kind, name)
+
+	def auth_thumb(self, url):
+		"""Rewrite cached/wrong EasyNews thumb URLs to the CDN filename that actually 200s."""
+		if not url: return url
+		url = str(url)
+		if '|' in url: url = url.split('|', 1)[0]
+		if '@th.easynews.com/' in url:
+			url = 'https://th.easynews.com/' + url.split('@th.easynews.com/', 1)[-1]
+		if 'th.easynews.com/thumbnails-' not in url: return url
+		try:
+			prefix, rest = url.split('th.easynews.com/thumbnails-', 1)
+			folder, fname = rest.split('/', 1)
+			kind, name = fname.rsplit('.', 1)[0].split('-', 1)
+			if name and len(name) > 41:
+				name = name[:-4]
+			return '%sth.easynews.com/thumbnails-%s/%s-%s.jpg' % (prefix, folder, kind, name)
+		except: return url
+
 	def search(self, query, expiration=48):
 		self._maybe_reload_credentials()
 		self.query = query
@@ -95,7 +119,7 @@ class EasyNewsAPI:
 					url_add = quote('/%s/%s/%s%s/%s%s' % (dl_farm, dl_port, post_hash, ext, post_title, ext))
 					url_dl = download_url + url_add
 					file_dl = down_url + url_add + '|Authorization=%s' % self.auth_quoted
-					thumbnail = 'https://th.easynews.com/thumbnails-%s/sm-%s.jpg' % (post_hash[0:3], post_hash)
+					thumbnail = self.thumb_url(post_hash, 'sm')
 					result = {'name': '%s_%s_%02d' % (self.query, post_title, count),
 							  'fullsize': size,
 							  'fullres': item['fullres'],
@@ -134,7 +158,7 @@ class EasyNewsAPI:
 					url_add = quote('/%s/%s/%s%s/%s%s' % (dl_farm, dl_port, post_hash, ext, post_title, ext))
 					stream_url = streaming_url + url_add
 					file_dl = down_url + url_add + '|Authorization=%s' % self.auth_quoted
-					thumbnail = 'https://th.easynews.com/thumbnails-%s/pr-%s.jpg' % (post_hash[0:3], post_hash)
+					thumbnail = self.thumb_url(post_hash, 'pr')
 					result = {'name': post_title,
 							  'size': size,
 							  'rawSize': item['rawSize'],
