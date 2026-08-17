@@ -1705,6 +1705,8 @@ class RedLightPlayer(xbmc.Player):
 			self._log_intro_skip('Intro skip failed: player inactive')
 			return False
 		ok = self.seek(end_sec, False)
+		# No-op if the prompt already restored fullscreen. Do not re-assert
+		# during an in-flight seek (that hitch was the post-Yes freeze).
 		self._restore_fullscreen_after_intro_skip()
 		if not ok:
 			self._log_intro_skip('Intro skip failed: seek rejected')
