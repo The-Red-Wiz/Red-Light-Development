@@ -99,16 +99,13 @@ class NavigatorCache:
 	main_menus = {'RootList': root_list, 'MovieList': movie_list, 'TVShowList': tvshow_list, 'AnimeList': anime_list}
 	
 	def get_main_lists(self, list_name):
-		default_contents = self.get_memory_cache(list_name, 'default')
-		if not default_contents:
-			default_contents = self.get_list(list_name, 'default')
-			if default_contents == None:
-				self.rebuild_database()
-				return self.get_main_lists(list_name)
-			try: edited_contents = self.get_list(list_name, 'edited')
-			except: edited_contents = None
-		else:
-			edited_contents = self.get_memory_cache(list_name, 'edited')
+		default_contents = self.get_memory_cache(list_name, 'default') or self.get_list(list_name, 'default')
+		if default_contents == None:
+			self.rebuild_database()
+			return self.get_main_lists(list_name)
+		edited_contents = self.get_memory_cache(list_name, 'edited')
+		if edited_contents is None:
+			edited_contents = self.get_list(list_name, 'edited')
 		return default_contents, edited_contents
 
 	def get_list(self, list_name, list_type):

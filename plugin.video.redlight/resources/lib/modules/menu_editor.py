@@ -51,8 +51,16 @@ class MenuEditor:
 
 	def restore(self):
 		if not kodi_utils.confirm_dialog(): return kodi_utils.notification('Cancelled', 1500)
-		self._db_execute('delete', self.active_list, list_type='edited', refresh=False)
-		self._db_execute('set', self.active_list, navigator_cache.main_menus[self.active_list], 'default')
+		if self.active_list not in navigator_cache.main_menus: return kodi_utils.notification('Cancelled', 1500)
+		# Rebuild this menu from the current addon catalog (not the stored first-install snapshot).
+		contents = [dict(i) for i in navigator_cache.main_menus[self.active_list]]
+		navigator_cache.delete_memory_cache(self.active_list, 'edited')
+		navigator_cache.delete_memory_cache(self.active_list, 'default')
+		navigator_cache.delete_list(self.active_list, 'edited')
+		navigator_cache.set_list(self.active_list, 'default', contents)
+		kodi_utils.notification('Success', 1500)
+		kodi_utils.sleep(500)
+		self._refresh_menu()
 
 	def reload(self):
 		default, edited = navigator_cache.get_main_lists(self.active_list)
@@ -263,7 +271,7 @@ class MenuEditor:
 	def _refresh_menu(self):
 		folder = kodi_utils.folder_path()
 		if folder and 'plugin.video.redlight' in folder:
-			return kodi_utils.container_update(kodi_utils.sanitize_folder_url(folder))
+			return kodi_utils.container_refresh()
 		if self.active_list in navigator_cache.main_menus:
 			return kodi_utils.container_update(kodi_utils.build_folder_url({'mode': 'navigator.main', 'action': self.active_list}))
 		if self.active_list:
