@@ -125,7 +125,8 @@ class MenuEditor:
 		list_type = 'edited' if edited else'default'
 		current_list = edited or default
 		new_from_catalog = [i for i in stock if not self._menu_has_item(default, i)]
-		new_optional = [i for i in optional if not self._menu_has_item(current_list, i)]
+		# Optional extras already on stored default belong in Browse Removed until Restore.
+		new_optional = [i for i in optional if not self._menu_has_item(current_list, i) and not self._menu_has_item(default, i)]
 		new_entries = new_from_catalog + new_optional
 		if not new_entries: return kodi_utils.notification('No New Items', 1500)
 		added = False
