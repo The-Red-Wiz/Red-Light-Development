@@ -103,6 +103,13 @@ class NavigatorCache:
 	main_menus = {'RootList': root_list, 'MovieList': movie_list, 'TVShowList': tvshow_list, 'AnimeList': anime_list}
 	optional_menus = {'TVShowList': tvshow_optional, 'AnimeList': anime_optional}
 	
+	def stock_menu_contents(self, list_name):
+		"""Default menu without optional extras (Next Episodes sort variants, etc.)."""
+		rows = [dict(i) for i in (self.main_menus.get(list_name) or [])]
+		optional = (getattr(self, 'optional_menus', None) or {}).get(list_name) or []
+		skip_names = {i.get('name') for i in optional}
+		return [i for i in rows if not i.get('nextep_sort') and i.get('name') not in skip_names]
+
 	def get_main_lists(self, list_name):
 		default_contents = self.get_memory_cache(list_name, 'default') or self.get_list(list_name, 'default')
 		if default_contents == None:
@@ -171,9 +178,8 @@ class NavigatorCache:
 		return used_list
 
 	def rebuild_database(self):
-		dbcon = connect_database('navigator_db')
-		main_items = NavigatorCache.main_menus.items()
-		for list_name, list_contents in main_items: self.set_list(list_name, 'default', list_contents)
+		for list_name in NavigatorCache.main_menus:
+			self.set_list(list_name, 'default', self.stock_menu_contents(list_name))
 
 	def _get_list_prop(self, list_type):
 		return {'default': 'redlight_%s_default', 'edited': 'redlight_%s_edited', 'shortcut_folder': 'redlight_%s_shortcut_folder'}[list_type]

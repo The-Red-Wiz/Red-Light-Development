@@ -1,5 +1,5 @@
 [COLOR red][B]Version 2.3.1[/B][/COLOR]
-- [B]Next Episodes[/B]: optional [B]Next Episodes (Recently Watched)[/B] and [B]Next Episodes (Airdate)[/B] (same membership for Trakt, Simkl, MDBList, PunchPlay, and Red Light). Not on the default TV Shows / Anime menus — add with context [B]Check for New Menu Items[/B]. Settings Sort Type still only applies to the original Next Episodes item. Both lists can be widgeted at once; each caches its own order.
+- [B]Next Episodes[/B]: optional [B]Next Episodes (Recently Watched)[/B] and [B]Next Episodes (Airdate)[/B] (same membership for Trakt, Simkl, MDBList, PunchPlay, and Red Light). Not on the default TV Shows / Anime menus — add with context [B]Check for New Menu Items[/B]. [B]Restore Menu[/B] returns the stock list (those extras are not put back). Settings Sort Type still only applies to the original Next Episodes item. Both lists can be widgeted at once; each caches its own order.
 - [B]TV Shows / Specials[/B]: watched count on the Specials season row no longer copies the latest regular season (e.g. S5 10/10 showing as Specials 10/37). Specials now uses its own watched total.
 - [B]Menus[/B]: [B]Browse Removed items[/B] can add the item back (choose position) or just open it — Restore Menu is not required.
 

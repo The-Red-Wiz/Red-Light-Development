@@ -52,8 +52,8 @@ class MenuEditor:
 	def restore(self):
 		if not kodi_utils.confirm_dialog(): return kodi_utils.notification('Cancelled', 1500)
 		if self.active_list not in navigator_cache.main_menus: return kodi_utils.notification('Cancelled', 1500)
-		# Rebuild this menu from the current addon catalog (not the stored first-install snapshot).
-		contents = [dict(i) for i in navigator_cache.main_menus[self.active_list]]
+		# Rebuild this menu from the stock catalog — never optional extras (nextep_sort lists).
+		contents = navigator_cache.stock_menu_contents(self.active_list)
 		navigator_cache.delete_memory_cache(self.active_list, 'edited')
 		navigator_cache.delete_memory_cache(self.active_list, 'default')
 		navigator_cache.delete_list(self.active_list, 'edited')
@@ -83,6 +83,8 @@ class MenuEditor:
 		new_entries = new_from_catalog + new_optional
 		if not new_entries: return kodi_utils.notification('No New Items', 1500)
 		added = False
+		added_optional = False
+		optional_names = {i.get('name') for i in optional}
 		for new_entry in new_entries:
 			new_entry_translated_name = new_entry.get('name')
 			if not kodi_utils.confirm_dialog(text='New item [B]%s[/B] Exists[CR]Would you like to add this to the Menu?' % new_entry_translated_name):
@@ -91,9 +93,16 @@ class MenuEditor:
 			if item_position == None: continue
 			current_list.insert(item_position, new_entry)
 			added = True
+			if new_entry.get('name') in optional_names: added_optional = True
 		if not added: return kodi_utils.notification('Cancelled', 1500)
-		self._db_execute('set', self.active_list, current_list, list_type)
-		if list_type == 'edited': self._db_execute('set', self.active_list, stock, 'default')
+		stock_contents = navigator_cache.stock_menu_contents(self.active_list)
+		# Optional extras must live on the edited menu. Writing them into default
+		# made Restore (and first-install snapshots) put them back on stock TV/Anime.
+		if added_optional or list_type == 'edited':
+			self._db_execute('set', self.active_list, current_list, 'edited', refresh=False)
+			self._db_execute('set', self.active_list, stock_contents, 'default')
+		else:
+			self._db_execute('set', self.active_list, current_list, 'default')
 
 	def browse(self):
 		list_name =  self.main_list_name_dict[self.active_list]
@@ -103,13 +112,18 @@ class MenuEditor:
 		browse_item = self._menu_select(choice_items, list_name)
 		if browse_item == None: return
 		browse_item = choice_items[browse_item]
-		action = self._removed_item_action(browse_item.get('name', ''))
-		if action == None: return
-		if action == 'add':
+		item_name = browse_item.get('name', '')
+		# Let the item picker close first — a second Select on top of it never appears.
+		kodi_utils.sleep(400)
+		add_back = kodi_utils.confirm_dialog(heading=item_name,
+			text='Add [B]%s[/B] back to this menu, or browse?' % item_name,
+			ok_label='Add to Menu', cancel_label='Browse', default_control=10)
+		if add_back == None: return
+		if add_back:
 			default, edited = navigator_cache.get_main_lists(self.active_list)
 			list_type = 'edited' if edited else 'default'
 			current_list = edited or default
-			position = self._menu_select(current_list, browse_item.get('name'), multi_line='true', position_list=True)
+			position = self._menu_select(current_list, item_name, multi_line='true', position_list=True)
 			if position == None: return kodi_utils.notification('Cancelled', 1500)
 			current_list.insert(position, browse_item)
 			self._db_execute('set', self.active_list, current_list, list_type)
@@ -268,12 +282,6 @@ class MenuEditor:
 	def _get_removed_items(self):
 		default_list_items, list_items = navigator_cache.get_main_lists(self.active_list)
 		return [i for i in default_list_items if not i in list_items]
-
-	def _removed_item_action(self, name):
-		items = [{'line1': 'Add to Menu', 'line2': 'Put [B]%s[/B] back on this menu' % name, 'icon': kodi_utils.get_icon('new')},
-				{'line1': 'Browse', 'line2': 'Open [B]%s[/B] without adding it' % name, 'icon': kodi_utils.get_icon('folder')}]
-		kwargs = {'items': json.dumps(items), 'heading': name, 'multi_line': 'true'}
-		return kodi_utils.select_dialog(['add', 'browse'], **kwargs)
 
 	def _get_external_name_input(self, current_name):
 		new_name = kodi_utils.kodi_dialog().input('', defaultt=current_name)
