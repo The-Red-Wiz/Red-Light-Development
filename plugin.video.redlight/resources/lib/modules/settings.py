@@ -171,8 +171,18 @@ def ai_model_order():
 def ai_model_limit():
 	return max(1, int(get_setting('redlight.ai_model.limit', '10')))
 
+WATCHLIST_UNAIRED_ACTIONS = frozenset((
+	'trakt_watchlist', 'trakt_watchlist_lists',
+	'mdblist_watchlist',
+	'punchplay_watchlist', 'punchplay_plantowatch',
+	'simkl_plantowatch',
+))
+
 def show_unaired_watchlist():
 	return get_setting('redlight.show_unaired_watchlist', 'true') == 'true'
+
+def hide_unaired_watchlist_item(action, unaired):
+	return bool(unaired) and action in WATCHLIST_UNAIRED_ACTIONS and not show_unaired_watchlist()
 
 def lists_cache_duraton():
 	return int(get_setting('redlight.lists_cache_duraton', '48'))
