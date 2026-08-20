@@ -104,11 +104,25 @@ class NavigatorCache:
 	optional_menus = {'TVShowList': tvshow_optional, 'AnimeList': anime_optional}
 	
 	def stock_menu_contents(self, list_name):
-		"""Default menu without optional extras (Next Episodes sort variants, etc.)."""
+		"""Catalog menu without optional extras (Next Episodes sort variants, etc.)."""
 		rows = [dict(i) for i in (self.main_menus.get(list_name) or [])]
 		optional = (getattr(self, 'optional_menus', None) or {}).get(list_name) or []
 		skip_names = {i.get('name') for i in optional}
 		return [i for i in rows if not i.get('nextep_sort') and i.get('name') not in skip_names]
+
+	def default_with_opted_in_extras(self, list_name, *item_lists):
+		"""Stock catalog plus optional extras the user has already added (until Restore)."""
+		stock = self.stock_menu_contents(list_name)
+		optional = (getattr(self, 'optional_menus', None) or {}).get(list_name) or []
+		canonical = {i.get('name'): dict(i) for i in optional}
+		seen, extras = set(), []
+		for items in item_lists:
+			for item in items or []:
+				name = item.get('name')
+				if name in canonical and name not in seen:
+					seen.add(name)
+					extras.append(canonical[name])
+		return stock + extras
 
 	def get_main_lists(self, list_name):
 		default_contents = self.get_memory_cache(list_name, 'default') or self.get_list(list_name, 'default')

@@ -753,7 +753,9 @@ def build_single_episode(list_type, params={}):
 			except: data = sorted(data, key=lambda i: i['sort_title'], reverse=True)
 	elif list_type == 'episode.simkl_public':
 		from apis.simkl_api import simkl_get_public_calendar
-		feeds = params.get('feeds') or 'all'
+		feeds = params.get('feeds')
+		if not feeds:
+			feeds = 'all' if settings.public_calendar_include_anime() else 'tv'
 		data = simkl_get_public_calendar(feeds)
 		list_type = 'episode.simkl_public_calendar'
 		if feeds == 'anime': category_override = 'Public Anime Calendar'
