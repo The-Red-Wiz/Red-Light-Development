@@ -98,15 +98,15 @@ class MenuEditor:
 	def restore(self):
 		if not kodi_utils.confirm_dialog(): return kodi_utils.notification('Cancelled', 1500)
 		if self.active_list not in navigator_cache.main_menus: return kodi_utils.notification('Cancelled', 1500)
-		# Rebuild this menu from the stock catalog — never optional extras (nextep_sort lists).
 		contents = navigator_cache.stock_menu_contents(self.active_list)
-		navigator_cache.delete_memory_cache(self.active_list, 'edited')
-		navigator_cache.delete_memory_cache(self.active_list, 'default')
+		for list_type in ('edited', 'opted_optional', 'default'):
+			navigator_cache.delete_memory_cache(self.active_list, list_type)
 		navigator_cache.delete_list(self.active_list, 'edited')
+		navigator_cache.delete_list(self.active_list, 'opted_optional')
 		navigator_cache.set_list(self.active_list, 'default', contents)
 		kodi_utils.notification('Success', 1500)
 		kodi_utils.sleep(500)
-		self._refresh_menu()
+		kodi_utils.container_update(kodi_utils.build_folder_url({'mode': 'navigator.main', 'action': self.active_list}))
 
 	def reload(self):
 		default, edited = navigator_cache.get_main_lists(self.active_list)
@@ -123,10 +123,11 @@ class MenuEditor:
 		optional = navigator_cache.optional_menus.get(self.active_list) or []
 		default, edited = navigator_cache.get_main_lists(self.active_list)
 		list_type = 'edited' if edited else'default'
-		current_list = edited or default
+		current_list = edited or navigator_cache.without_optional_extras(self.active_list, default)
 		new_from_catalog = [i for i in stock if not self._menu_has_item(default, i)]
-		# Optional extras already on stored default belong in Browse Removed until Restore.
-		new_optional = [i for i in optional if not self._menu_has_item(current_list, i) and not self._menu_has_item(default, i)]
+		# Optional extras already opted-in belong in Browse Removed until Restore.
+		opted = navigator_cache.get_opted_optional(self.active_list)
+		new_optional = [i for i in optional if not self._menu_has_item(current_list, i) and not self._menu_has_item(opted, i)]
 		new_entries = new_from_catalog + new_optional
 		if not new_entries: return kodi_utils.notification('No New Items', 1500)
 		added = False
@@ -142,12 +143,17 @@ class MenuEditor:
 			added = True
 			if new_entry.get('name') in optional_names: added_optional = True
 		if not added: return kodi_utils.notification('Cancelled', 1500)
-		# Keep opted-in extras on stored default so Browse Removed can re-add them.
-		# Restore still rebuilds default from the stock catalog and drops them.
-		new_default = navigator_cache.default_with_opted_in_extras(self.active_list, default, current_list)
+		# Default stays stock so Restore cannot put extras back. Opted extras are a separate list.
+		stock_contents = navigator_cache.stock_menu_contents(self.active_list)
 		if added_optional or list_type == 'edited':
 			self._db_execute('set', self.active_list, current_list, 'edited', refresh=False)
-			self._db_execute('set', self.active_list, new_default, 'default')
+			self._db_execute('set', self.active_list, stock_contents, 'default', refresh=False)
+			if added_optional:
+				for entry in current_list:
+					if entry.get('name') in optional_names and not self._menu_has_item(opted, entry):
+						opted.append(dict(entry))
+				navigator_cache.set_list(self.active_list, 'opted_optional', opted)
+			self._refresh_menu()
 		else:
 			self._db_execute('set', self.active_list, current_list, 'default')
 
@@ -168,12 +174,16 @@ class MenuEditor:
 		if add_back == None: return
 		if add_back:
 			default, edited = navigator_cache.get_main_lists(self.active_list)
-			list_type = 'edited' if edited else 'default'
-			current_list = edited or default
+			optional_names = {i.get('name') for i in (navigator_cache.optional_menus.get(self.active_list) or [])}
+			is_optional = browse_item.get('name') in optional_names or browse_item.get('nextep_sort')
+			current_list = edited or navigator_cache.without_optional_extras(self.active_list, default)
 			position = self._menu_select(current_list, item_name, multi_line='true', position_list=True)
 			if position == None: return kodi_utils.notification('Cancelled', 1500)
 			current_list.insert(position, browse_item)
-			self._db_execute('set', self.active_list, current_list, list_type)
+			if is_optional or edited:
+				self._db_execute('set', self.active_list, current_list, 'edited')
+			else:
+				self._db_execute('set', self.active_list, current_list, 'default')
 			return
 		if browse_item.get('mode') == 'build_popular_people': command = 'RunPlugin(%s)'
 		else: command = 'Container.Update(%s)'
@@ -328,9 +338,14 @@ class MenuEditor:
 
 	def _get_removed_items(self):
 		default_list_items, edited = navigator_cache.get_main_lists(self.active_list)
-		current = edited if edited else (default_list_items or [])
-		return [i for i in (default_list_items or []) if not self._menu_has_item(current, i)
-			and i.get('mode') != 'build_simkl_public_calendar']
+		current = edited if edited else navigator_cache.without_optional_extras(self.active_list, default_list_items)
+		stock_removed = [i for i in (default_list_items or []) if not self._menu_has_item(current, i)
+			and i.get('mode') != 'build_simkl_public_calendar' and not i.get('nextep_sort')]
+		removed = [i for i in stock_removed if i.get('name') not in {x.get('name') for x in (navigator_cache.optional_menus.get(self.active_list) or [])}]
+		for item in navigator_cache.get_opted_optional(self.active_list):
+			if not self._menu_has_item(current, item) and not self._menu_has_item(removed, item):
+				removed.append(item)
+		return removed
 
 	def _same_menu_item(self, a, b):
 		return (str(a.get('name')) == str(b.get('name')) and a.get('mode') == b.get('mode')
