@@ -73,11 +73,14 @@ class MenuEditor:
 		self._db_execute('set', self.active_list, list_items, list_type)
 
 	def update(self):
-		new_contents = navigator_cache.main_menus[self.active_list]
+		stock = navigator_cache.main_menus.get(self.active_list) or []
+		optional = navigator_cache.optional_menus.get(self.active_list) or []
 		default, edited = navigator_cache.get_main_lists(self.active_list)
 		list_type = 'edited' if edited else'default'
 		current_list = edited or default
-		new_entries = [i for i in new_contents if i not in default]
+		new_from_catalog = [i for i in stock if i not in default]
+		new_optional = [i for i in optional if i not in current_list]
+		new_entries = new_from_catalog + new_optional
 		if not new_entries: return kodi_utils.notification('No New Items', 1500)
 		added = False
 		for new_entry in new_entries:
@@ -90,7 +93,7 @@ class MenuEditor:
 			added = True
 		if not added: return kodi_utils.notification('Cancelled', 1500)
 		self._db_execute('set', self.active_list, current_list, list_type)
-		if list_type == 'edited': self._db_execute('set', self.active_list, new_contents, 'default')
+		if list_type == 'edited': self._db_execute('set', self.active_list, stock, 'default')
 
 	def browse(self):
 		list_name =  self.main_list_name_dict[self.active_list]
@@ -100,6 +103,17 @@ class MenuEditor:
 		browse_item = self._menu_select(choice_items, list_name)
 		if browse_item == None: return
 		browse_item = choice_items[browse_item]
+		action = self._removed_item_action(browse_item.get('name', ''))
+		if action == None: return
+		if action == 'add':
+			default, edited = navigator_cache.get_main_lists(self.active_list)
+			list_type = 'edited' if edited else 'default'
+			current_list = edited or default
+			position = self._menu_select(current_list, browse_item.get('name'), multi_line='true', position_list=True)
+			if position == None: return kodi_utils.notification('Cancelled', 1500)
+			current_list.insert(position, browse_item)
+			self._db_execute('set', self.active_list, current_list, list_type)
+			return
 		if browse_item.get('mode') == 'build_popular_people': command = 'RunPlugin(%s)'
 		else: command = 'Container.Update(%s)'
 		kodi_utils.execute_builtin(command % kodi_utils.build_url(browse_item))
@@ -254,6 +268,12 @@ class MenuEditor:
 	def _get_removed_items(self):
 		default_list_items, list_items = navigator_cache.get_main_lists(self.active_list)
 		return [i for i in default_list_items if not i in list_items]
+
+	def _removed_item_action(self, name):
+		items = [{'line1': 'Add to Menu', 'line2': 'Put [B]%s[/B] back on this menu' % name, 'icon': kodi_utils.get_icon('new')},
+				{'line1': 'Browse', 'line2': 'Open [B]%s[/B] without adding it' % name, 'icon': kodi_utils.get_icon('folder')}]
+		kwargs = {'items': json.dumps(items), 'heading': name, 'multi_line': 'true'}
+		return kodi_utils.select_dialog(['add', 'browse'], **kwargs)
 
 	def _get_external_name_input(self, current_name):
 		new_name = kodi_utils.kodi_dialog().input('', defaultt=current_name)

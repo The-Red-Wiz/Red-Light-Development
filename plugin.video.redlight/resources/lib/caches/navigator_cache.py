@@ -67,7 +67,9 @@ class NavigatorCache:
 	{'name': 'In Progress', 'mode': 'build_tvshow_list', 'action': 'in_progress_tvshows', 'iconImage': 'in_progress_tvshow'},
 	{'name': 'Recently Watched Episodes', 'mode': 'build_recently_watched_episode', 'iconImage': 'watched_recent'},
 	{'name': 'In Progress Episodes', 'mode': 'build_in_progress_episode', 'iconImage': 'player'},
-	{'name': 'Next Episodes', 'mode': 'build_next_episode', 'iconImage': 'next_episodes'},
+	{'name': 'Next Episodes', 'mode': 'build_next_episode', 'iconImage': 'next_episodes'}
+				]
+	tvshow_optional = [
 	{'name': 'Next Episodes (Recently Watched)', 'mode': 'build_next_episode', 'nextep_sort': 'last_played', 'iconImage': 'next_episodes'},
 	{'name': 'Next Episodes (Airdate)', 'mode': 'build_next_episode', 'nextep_sort': 'first_aired', 'iconImage': 'next_episodes'}
 				]
@@ -91,12 +93,15 @@ class NavigatorCache:
 	{'name': 'Anime In Progress', 'mode': 'build_tvshow_list', 'action': 'in_progress_tvshows', 'is_anime_list': 'true', 'iconImage': 'in_progress_tvshow'},
 	{'name': 'Anime Recently Watched Episodes', 'mode': 'build_recently_watched_episode', 'is_anime_list': 'true', 'iconImage': 'watched_recent'},
 	{'name': 'Anime In Progress Episodes', 'mode': 'build_in_progress_episode', 'is_anime_list': 'true', 'iconImage': 'player'},
-	{'name': 'Anime Next Episodes', 'mode': 'build_next_episode', 'iconImage': 'next_episodes', 'is_anime_list': 'true'},
+	{'name': 'Anime Next Episodes', 'mode': 'build_next_episode', 'iconImage': 'next_episodes', 'is_anime_list': 'true'}
+					]
+	anime_optional = [
 	{'name': 'Anime Next Episodes (Recently Watched)', 'mode': 'build_next_episode', 'nextep_sort': 'last_played', 'iconImage': 'next_episodes', 'is_anime_list': 'true'},
 	{'name': 'Anime Next Episodes (Airdate)', 'mode': 'build_next_episode', 'nextep_sort': 'first_aired', 'iconImage': 'next_episodes', 'is_anime_list': 'true'}
 					]
 
 	main_menus = {'RootList': root_list, 'MovieList': movie_list, 'TVShowList': tvshow_list, 'AnimeList': anime_list}
+	optional_menus = {'TVShowList': tvshow_optional, 'AnimeList': anime_optional}
 	
 	def get_main_lists(self, list_name):
 		default_contents = self.get_memory_cache(list_name, 'default') or self.get_list(list_name, 'default')
