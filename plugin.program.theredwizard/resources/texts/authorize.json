@@ -1,0 +1,215 @@
+{
+    "supported_addons": [
+        {
+            "id": "plugin.video.absolution",
+            "name": "Absolution",
+            "services": {
+                "trakt": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.absolution/?action=authTrakt",
+                        "label": "Trakt"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "plugin.video.gratisred",
+            "name": "Gratis Red",
+            "services": {
+                "mdblist": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.gratisred/?action=auth_mdblist",
+                        "label": "MDBList"
+                    }
+                ],
+                "simkl": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.gratisred/?action=auth_simkl",
+                        "label": "Simkl"
+                    }
+                ],
+                "tmdb": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.gratisred/?action=auth_tmdb",
+                        "label": "TMDb"
+                    }
+                ],
+                "trakt": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.gratisred/?action=auth_trakt",
+                        "label": "Trakt"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "plugin.video.redlight",
+            "name": "Red Light",
+            "services": {
+                "alldebrid": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=alldebrid.authenticate",
+                        "label": "All-Debrid"
+                    }
+                ],
+                "mdblist": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=mdblist.mdblist_authenticate",
+                        "label": "MDBList"
+                    }
+                ],
+                "offcloud": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=offcloud.authenticate",
+                        "label": "OffCloud"
+                    }
+                ],
+                "premiumize": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=premiumize.authenticate",
+                        "label": "Premiumize"
+                    }
+                ],
+                "punchplay": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=punchplay.punchplay_authenticate",
+                        "label": "PunchPlay"
+                    }
+                ],
+                "realdebrid": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=real_debrid.authenticate",
+                        "label": "Real-Debrid"
+                    }
+                ],
+                "simkl": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=simkl.simkl_authenticate",
+                        "label": "Simkl"
+                    }
+                ],
+                "tmdb": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=tmdblist_api.authenticate",
+                        "label": "TMDb"
+                    }
+                ],
+                "torbox": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=torbox.authenticate",
+                        "label": "TorBox"
+                    }
+                ],
+                "trakt": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=trakt.trakt_authenticate",
+                        "label": "Trakt"
+                    }
+                ],
+                "wetrakr": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.redlight/?mode=wetrakr.wetrakr_authenticate",
+                        "label": "WeTrakr"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "script.module.resolveurl",
+            "name": "ResolveURL",
+            "services": {
+                "alldebrid": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://script.module.resolveurl/?mode=auth_ad",
+                        "label": "All-Debrid"
+                    }
+                ],
+                "premiumize": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://script.module.resolveurl/?mode=auth_pm",
+                        "label": "Premiumize"
+                    }
+                ],
+                "realdebrid": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://script.module.resolveurl/?mode=auth_rd",
+                        "label": "Real-Debrid"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "plugin.video.thechains",
+            "name": "The Chains",
+            "services": {
+                "alldebrid": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.thechains?mode=142&url=www",
+                        "label": "All-Debrid"
+                    }
+                ],
+                "premiumize": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.thechains?mode=140&url=www",
+                        "label": "Premiumize"
+                    }
+                ],
+                "realdebrid": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.thechains?mode=138&url=www",
+                        "label": "Real-Debrid"
+                    }
+                ],
+                "torbox": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.thechains?mode=208&url=www",
+                        "label": "TorBox"
+                    }
+                ],
+                "trakt": [
+                    {
+                        "type": "plugin",
+                        "value": "plugin://plugin.video.thechains?mode=205&url=www",
+                        "label": "Trakt"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "plugin.video.themoviedb.helper",
+            "name": "TMDB Helper",
+            "services": {
+                "trakt": [
+                    {
+                        "type": "builtin",
+                        "value": "RunScript(plugin.video.themoviedb.helper,authenticate_trakt)",
+                        "label": "Trakt"
+                    }
+                ]
+            }
+        }
+    ]
+}
