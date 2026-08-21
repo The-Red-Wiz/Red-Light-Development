@@ -23,7 +23,7 @@ def backup(path, file):
             if os.path.isfile(os.path.join(path, file)):
                 xbmcvfs.copy(os.path.join(path, file), os.path.join(packages, file))   #Backup your Kodi specifics (advancedsettings, favs etc...)
             elif os.path.isdir(os.path.join(path, file)):
-                shutil.copytree(os.path.join(path, file), os.path.join(packages, file), dirs_exist_ok=True)   #Backup your Trakt & Debrid data
+                shutil.copytree(os.path.join(path, file), os.path.join(packages, file), dirs_exist_ok=True)   #Backup your Debrid and Meta Account data
         except Exception as e:
             xbmc.log('Failed to backup %s. Reason: %s' % (os.path.join(packages, file), e), xbmc.LOGINFO)
 
@@ -54,7 +54,7 @@ def restore(path, file):
                     os.unlink(os.path.join(path, file))   #Remove Kodi specifics included with new install
                 shutil.move(os.path.join(packages, file), os.path.join(path, file))   #Restore your backed up Kodi specifics
             elif os.path.isdir(os.path.join(packages, file)):
-                shutil.copytree(os.path.join(packages, file), os.path.join(path, file), dirs_exist_ok=True)   #Restore your backed up Trakt & Debrid data
+                shutil.copytree(os.path.join(packages, file), os.path.join(path, file), dirs_exist_ok=True)   #Restore your backed up Debrid and Meta Account data
         except Exception as e:
             xbmc.log('Failed to restore %s. Reason: %s' % (os.path.join(path, file), e), xbmc.LOGINFO)
             

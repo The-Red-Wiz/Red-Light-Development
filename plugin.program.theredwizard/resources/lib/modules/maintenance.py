@@ -161,9 +161,9 @@ def fresh_start(standalone=False):
     xbmc.sleep(100)
     dp.update(30, local_string(30043))
     xbmc.sleep(100)
-    dp.close()
-    xbmc.sleep(500)
     if standalone:
+        dp.close()
+        xbmc.sleep(500)
         for root, dirs, files in os.walk(xbmcPath, topdown=True):
             dirs[:] = [d for d in dirs if d not in EXCLUDES_FRESH]
             for name in files:

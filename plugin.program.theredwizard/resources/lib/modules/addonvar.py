@@ -22,9 +22,11 @@ addon_fanart    = addon_info("fanart")
 translatePath   = xbmcvfs.translatePath
 addon_profile   = translatePath(addon_info('profile'))
 addon_path      = translatePath(addon_info('path'))    
-setting         = addon.getSetting
+def setting(key):
+    return xbmcaddon.Addon(addon_id).getSetting(key)
 setting_true    = lambda x: bool(True if setting(str(x)) == "true" else False)
-setting_set     = addon.setSetting
+def setting_set(key, value):
+    xbmcaddon.Addon(addon_id).setSetting(key, value)
 local_string    = addon.getLocalizedString
 CURRENT_BUILD   = setting('buildname')
 CURRENT_VERSION = setting('buildversion')

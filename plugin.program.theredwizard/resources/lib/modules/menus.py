@@ -52,8 +52,6 @@ def main_menu():
     add_dir(COLOR2(local_string(30011)), '', 5, addon_icon, addon_fanart, COLOR2(local_string(30002)), isFolder=True)  # Maintenance Menu
     
     add_dir(COLOR2(local_string(30072)), '', 39, addon_icon, addon_fanart, COLOR2(local_string(30071)), isFolder=True)  # Tools Menu
-
-    add_dir(COLOR2(local_string(30074)), '', 42, addon_icon, addon_fanart, COLOR2(local_string(30073)), isFolder=True)  # Whitelist
     
     if videos_url not in ('', 'http://', 'http://CHANGEME'):
         add_dir(COLOR2(local_string(30068)), videos_url, 40, addon_icon, addon_fanart, COLOR2(local_string(30069)), isFolder=True) # Videos
@@ -173,9 +171,11 @@ def submenu_tools():
         add_dir(COLOR2('Enable Skin Override Protection'),'',30,addon_icon,addon_fanart,COLOR2(local_string(30115)),isFolder=False)  # Enable Skin Override
     else:
         add_dir(COLOR2('Disable Skin Override Protection'),'',30,addon_icon,addon_fanart,COLOR2(local_string(30115)),isFolder=False)  # Disable Skin Override
-    add_dir(COLOR2('View Logs'),'', 26, addon_icon,addon_fanart,COLOR2('View Kodi Logs'), isFolder=False) # View Kodis log file
+    add_dir(COLOR2('Upload Kodi Log'),'', 26, addon_icon,addon_fanart,COLOR2('Upload your Kodi log to paste.kodi.tv and get a shareable link'), isFolder=False) # Upload Kodi log
+    add_dir(COLOR2('View Logs'),'', 44, addon_icon,addon_fanart,COLOR2('View Kodi Logs'), isFolder=False) # View Kodi log
     add_dir(COLOR2(local_string(30013)), '', 34, addon_icon, addon_fanart, COLOR2(local_string(30014)), isFolder=False)  # View Notification
     add_dir(COLOR2('Force Close Kodi'),'', 18, addon_icon,addon_fanart,COLOR2('Force Close Kodi'), isFolder=False) # Force Close Kodi
+    add_dir(COLOR2('Whitelist Add-Ons'), '', 42, addon_icon, addon_fanart, COLOR2(local_string(30073)), isFolder=True)  # Whitelist Add-Ons
     
     #add_dir(COLOR1('<><> [B]Shortcuts[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('Shortcuts'),isFolder=False) # Shortcuts
     #add_dir(COLOR2('Kodi Settings'),'',150,addon_icon,addon_fanart, COLOR2('Kodi Settings Shortcuts'))  # Kodi Settings Menu Shortcuts
@@ -186,8 +186,8 @@ def submenu_tools():
     #add_dir(COLOR2('Force Close Kodi'),'', 18, addon_icon,addon_fanart,COLOR2('Force Close Kodi'), isFolder=False) # Force Close Kodi
 
 def submenu_whitelist():
-    xbmcplugin.setPluginCategory(HANDLE, COLOR1(local_string(30073)))  # Whitelist
-    add_dir(COLOR1('<><> [B]Add-ons Whitelist[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('Add-ons Whitelist'),isFolder=False)
+    xbmcplugin.setPluginCategory(HANDLE, COLOR1('Whitelist Add-Ons'))
+    add_dir(COLOR1('<><> [B]Whitelist Add-Ons[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('Whitelist Add-Ons'),isFolder=False)
     add_dir(COLOR2('Add To Whitelist'),'',11,addon_icon,addon_fanart,COLOR2(local_string(30064)), isFolder=False)  # Add to Whitelist
     add_dir(COLOR2('Remove From Whitelist'),'', 33, addon_icon,addon_fanart,COLOR2(local_string(30065)), isFolder=False) # Remove from Whitelist
 
@@ -272,9 +272,11 @@ def addon_specific():
     add_dir(COLOR2('Backup & Restore'),'',64, addon_icon,addon_fanart, COLOR2('Backup & Restore Settings'), isFolder=False)
 
     add_dir(COLOR1('<><> [B]ResolveURL Shortcuts[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('ResolveURL Shortcuts'), isFolder=False)
-    add_dir(COLOR2('Real-Debrid'),'',51, addon_icon,addon_fanart, COLOR2('ResolveURL Real-Debrid'), isFolder=False)
-    add_dir(COLOR2('Premiumize'),'',52,addon_icon,addon_fanart,COLOR2('ResolveURL Premiumize'), isFolder=False)
     add_dir(COLOR2('All-Debrid'),'',53, addon_icon,addon_fanart, COLOR2('ResolveURL All-Debrid'), isFolder=False)
+    add_dir(COLOR2('OffCloud'),'',54, addon_icon,addon_fanart, COLOR2('ResolveURL OffCloud'), isFolder=False)
+    add_dir(COLOR2('Premiumize'),'',52,addon_icon,addon_fanart,COLOR2('ResolveURL Premiumize'), isFolder=False)
+    add_dir(COLOR2('Real-Debrid'),'',51, addon_icon,addon_fanart, COLOR2('ResolveURL Real-Debrid'), isFolder=False)
+    add_dir(COLOR2('TorBox'),'',55, addon_icon,addon_fanart, COLOR2('ResolveURL TorBox'), isFolder=False)
 
 #Kodi Builtins
 def kodi_builtins():
@@ -305,11 +307,12 @@ def addonbrowser():
     add_dir(COLOR2('Web Interface Add-ons'),'',144,addon_icon,addon_fanart,COLOR2('Web Interface Add-ons'), isFolder=False)
      
 def authorize_menu():
-    add_dir(COLOR1('<><> [B]Account Manager Lite[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('Account Manager Lite'),isFolder=False)
-    add_dir(COLOR2('[B]Account Manager Lite[/B]'),'',38,addon_icon,addon_fanart,COLOR2(local_string(30067)), isFolder=False)
+    if xbmc.getCondVisibility('System.HasAddon(script.module.acctmgr)'):
+        add_dir(COLOR1('<><> [B]Account Manager Lite[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('Account Manager Lite'),isFolder=False)
+        add_dir(COLOR2('[B]Account Manager Lite[/B]'),'',38,addon_icon,addon_fanart,COLOR2(local_string(30067)), isFolder=False)
 
-    add_dir(COLOR1('<><> [B]Authorise Debrid and Trakt[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('Authorise Debrid and Trakt'),isFolder=False)
-    add_dir(COLOR2('[B]Authorise Debrid and Trakt[/B]'),'',43,addon_icon,addon_fanart,COLOR2('Authorise Debrid and Trakt for installed add-ons'), isFolder=True)
+    add_dir(COLOR1('<><> [B]Authorise Debrid and Meta Accounts[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('Authorise Debrid and Meta Accounts'),isFolder=False)
+    add_dir(COLOR2('[B]Authorise Debrid and Meta Accounts[/B]'),'',43,addon_icon,addon_fanart,COLOR2('Authorise Debrid and Meta Accounts for Installed Add-ons'), isFolder=True)
 
     add_dir(COLOR1('<><> [B]MDBList API Key[/B] <><>'),'','',addon_icon,addon_fanart, COLOR1('MDBList Ratings (Redflix Builds only)'),isFolder=False)
     if setting('mdb.api.key') == '' or None:

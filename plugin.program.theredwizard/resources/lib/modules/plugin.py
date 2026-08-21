@@ -21,7 +21,7 @@ from .addons_enable import force_update
 from .addonvar import setting, setting_set, addon, addon_name, addon_icon, gui_save_default, gui_save_user, skin_gui, mdb_api_chk, mdblist, skin_chk, chk_splash, chk_skin_override, advancedsettings_xml, advancedsettings_blank, UPDATE_VERSION, BUILD_URL, BUILD_NAME
 from .save_data import restore_gui, restore_skin, backup_gui_skin
 from .backup_restore import backup_build, restore_menu, restore_build, get_backup_folder, reset_backup_folder
-from .focus_settings import tmdbh_mdblist_api, rurl_settings_rd, rurl_settings_pm, rurl_settings_ad, am_accounts, am_manage, am_backup_restore
+from .focus_settings import tmdbh_mdblist_api, rurl_settings_rd, rurl_settings_pm, rurl_settings_ad, rurl_settings_oc, rurl_settings_tb, am_accounts, am_manage, am_backup_restore
            
 try:
     HANDLE = int(sys.argv[1])
@@ -73,6 +73,7 @@ def router(paramstring):
     
     elif mode == 9:
         addon.openSettings()
+        xbmc.executebuiltin('Container.Refresh()')
     
     elif mode == 10:
         authorize_menu()
@@ -124,8 +125,8 @@ def router(paramstring):
         xbmc.executebuiltin(url)
     
     elif mode == 26:
-        from .quick_log import log_viewer
-        log_viewer()
+        from .quick_log import upload_logfile
+        upload_logfile()
     
     elif mode == 27:
         authorize_submenu(name2, icon)
@@ -266,7 +267,10 @@ def router(paramstring):
                     xbmcgui.Dialog().notification(addon_name, '[COLOR gold]MDBList Key Removed!![/COLOR]', addon_icon, 3000)
                     
     elif mode == 38:
-        xbmc.executebuiltin('RunScript(script.module.acctmgr)')
+        if xbmc.getCondVisibility('System.HasAddon(script.module.acctmgr)'):
+            xbmc.executebuiltin('RunScript(script.module.acctmgr)')
+        else:
+            xbmcgui.Dialog().notification(addon_name, '[COLOR gold]Account Manager Lite is not installed.[/COLOR]', addon_icon, 3000)
 
     elif mode == 39:
         submenu_tools()
@@ -290,6 +294,10 @@ def router(paramstring):
     elif mode == 43:
         debrid_trakt_menu()
 
+    elif mode == 44:
+        from .quick_log import log_viewer
+        log_viewer()
+
 
 #############################################################
 #######################SHORTCUTS#############################
@@ -306,6 +314,10 @@ def router(paramstring):
         rurl_settings_pm()
     elif mode == 53:
         rurl_settings_ad()
+    elif mode == 54:
+        rurl_settings_oc()
+    elif mode == 55:
+        rurl_settings_tb()
     # Account Manager
     elif mode == 62:
         am_accounts()

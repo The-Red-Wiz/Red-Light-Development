@@ -34,12 +34,12 @@ def _is_installed(addon_id):
         return False
 
 def authorize_menu():
-    xbmcplugin.setPluginCategory(HANDLE, COLOR1('Authorise Debrid and Trakt'))
+    xbmcplugin.setPluginCategory(HANDLE, COLOR1('Authorise Debrid and Meta Accounts'))
     data = _load_auth()
     addons = [addon for addon in data.get('supported_addons', []) if addon.get('id') and _is_installed(addon.get('id'))]
     addons.sort(key=lambda addon: addon.get('name', addon.get('id', '')).lower())
 
-    add_dir(COLOR1('<><> [B]Authorise Debrid and Trakt[/B] <><>'), '', '', addon_icon, addon_fanart, COLOR1('Authorise Debrid and Trakt'), isFolder=False)
+    add_dir(COLOR1('<><> [B]Authorise Debrid and Meta Accounts[/B] <><>'), '', '', addon_icon, addon_fanart, COLOR1('Authorise Debrid and Meta Accounts'), isFolder=False)
     for addon in addons:
         name = addon.get('name', addon.get('id'))
         add_dir(COLOR2(name), '', 27, addon_icon, addon_fanart, COLOR2(name), name2=addon.get('id'))
